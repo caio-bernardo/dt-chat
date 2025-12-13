@@ -1,5 +1,9 @@
 """
 Script to create embeddings from our documents base.
+
+You shall set the target folder of documents to process and where to store it.
+
+Also set in a enviroment variable the API key of your model.
 """
 
 import json
@@ -11,6 +15,9 @@ from langchain_core.documents import Document
 from langchain_docling.loader import DoclingLoader
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+TARGET_DIR: str = "RAG-Cartoes"
+PERSISTENCE_DIR: str = "./chroma.db"
 
 
 def clean_metadata_value(v):
@@ -62,7 +69,7 @@ def split_documents(
 
 
 def main():
-    files = gather_documents(Path("RAG-Cartoes"))
+    files = gather_documents(Path(TARGET_DIR))
     docs = split_documents(lazy_load_documents(files))
     clean_docs = [clean_document(d) for d in docs]
 
@@ -71,7 +78,7 @@ def main():
     vector_store = Chroma(
         collection_name="banco_collection",
         embedding_function=embeddings,
-        persist_directory="./chroma_db",
+        persist_directory=PERSISTENCE_DIR,
     )
 
     _ = vector_store.add_documents(documents=clean_docs)
