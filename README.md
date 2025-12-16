@@ -1,50 +1,41 @@
-# dtchat
-Framework for Digital Twins of conversational agents.
+#  Monitoring of Conversation Agents with Digital Twin Systems _(dtchat)_
 
-## Features
-- Banco Bot, a conversational agent specialized at assisting client from X bank.
+> Framework for building Digital Twins of conversational agents.
+
+This project is part of a larger academic research for **Evaluation of Large Language Models**. The scope of this project is to create a framework or library that allows the creation of applications that monitors conversational agents using the Digital Twin architecture. To accomplish this, a simulated usecase is created to be monitored by the digital twin, this usecase is a chatbot for a imaginary bank, specialized in credit cards. Fake users also will be created to access the chatbot and simulate conversations. Finally, combining process minining techniques, the conversations will produce touchpoints (according to a predefined set, complying to business decision) that will be used to monitor and spin up digital twins for more complex testing and evaluation. 
+
+A schematic of this research is provided below.
+
+![Diagram of monitoring application with digital twins for a chat system powered by a conversational agent](assets/DT-Itau-Model.jpg)
 
 
-## Pre-requisites
-- Python +3.12
-- uv package manager
+## Project Structure
 
-## Getting Started
-
-### 1. Install all dependencies
-
-Make sure you have uv and Python installed.
-
-```bash
-uv sync
+```sh
+dt-chat/
+├── apps/
+│   └── bancobot/
+├── libs/
+├── scripts/
 ```
 
-> Note: a `.venv` folder will be created at the root of the project, you can enable it at your shell with `source .venv/bin/activate` and drop the `uv run ` prefix.
+### Applications _(apps)_
 
-### 2. Set enviroment variables
+Contains packages to run necessary applications for the simulation.
 
-Create a new file called `.env` with the same variables of `.env.example`. Configure your API keys from language models, a database url to store data, and _optionally_ LangSmith for tracing.
+**bancobot**: Banco Bot, a conversational agent specialized at assisting client from Bank X. See [apps/bancobot](apps/bancobot/README.md) for more.
 
-### 3. Build embeddings 
+### Libraries _(lib)_
 
-First of all, our agent needs access to a vector store of documents related to its domain. Create a new folder at the root of the project called `RAG-Cartoes`, or modify the name at `src/scripts/embender.py`. Inside the script set your embedding model or use the default one. The default vector store location will be at `./chroma_db` directory.
+Contains library code.
 
-Run the script and wait a little:
-```bash
-uv run src/scripts/embender.py
-```
+### Scripts
 
-Your vector store will be created and your agents can use it.
+Standalone python scripts to run some functionalities, like creating a vector store or reading a database. Each script contains its own set of dependencies and can be run without this project.
 
-### Bonus: Run tests
+## Contributing
 
-Use the script inside `test/` to run tests. To run all tests:
-
-```bash
-uv run tests/run_tests.py
-```
-
-See more at [test/README.md](./test/README.md).
+As of now, this project **is not** accepting outside contributions. Though, that may change in the future.
 
 ## License
 
