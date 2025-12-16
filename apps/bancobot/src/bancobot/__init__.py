@@ -2,11 +2,12 @@
 Script to create a Banco Bot API
 """
 
-from bancobot.database import create_db_and_tables
 import uvicorn
-from fastapi import FastAPI
-from bancobot.routes import router
 from dotenv import load_dotenv
+from fastapi import FastAPI
+
+from .database import create_db_and_tables
+from .routes import router
 
 load_dotenv()
 

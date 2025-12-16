@@ -1,24 +1,73 @@
+# !/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "langchain-chroma",
+#     "langchain-docling",
+#     "langchain-openai",
+#     "langchain-text-splitters",
+#     "python-dotenv",
+# ]
+# ///
+
 """
-Script to create embeddings from our documents base.
+# Embendder Script
 
-You shall set the target folder of documents to process and where to store it.
+Script to create a vector store from our documents database. Used by to create our _Banco Bot_ agent.
 
-Also set in a enviroment variable the API key of your model.
+## Usage
+
+1. Configure the Environment
+
+```sh
+cp .env.example .env
+```
+
+Update the `.env` with your configuration:
+- OpenAI API Key
+
+2. Configure Local variables
+
+Initially the script will execute with the following variables:
+
+```python
+TARGET_DIR: str = "RAG-Cartoes"                    # Where to look for documents
+COLLECTION_NAME: str = "banco_collection"          # Name of our collection
+PERSISTENCE_DIR: str = "./chroma.db"               # Name of our vector store
+EMBEDDING_MODEL: str = "text-embedding-3-large"    # Model to create vectors
+```
+
+You may modify it to your needs.
+
+3. Run the script
+
+```sh
+uv run scripts/embendder.py
+```
+
+## License
+
+This project is licensed under the MIT License -- see the [LICENSE](../../LICENSE) file for details.
 """
 
 import json
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
+from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_docling.loader import DoclingLoader
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-TARGET_DIR: str = "RAG-Cartoes"
-PERSISTENCE_DIR: str = "./chroma.db"
+load_dotenv()
 
+TARGET_DIR: str = "RAG-Cartoes"                    # Where to look for documents
+COLLECTION_NAME: str = "banco_collection"          # Name of our collection
+PERSISTENCE_DIR: str = "./chroma.db"               # Name of our vector store
+EMBEDDING_MODEL: str = "text-embedding-3-large"    # Model to create vectors
 
 def clean_metadata_value(v):
     """Clean metadata section from invalid values. It ignores scalar values,
@@ -73,10 +122,10 @@ def main():
     docs = split_documents(lazy_load_documents(files))
     clean_docs = [clean_document(d) for d in docs]
 
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+    embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
 
     vector_store = Chroma(
-        collection_name="banco_collection",
+        collection_name=COLLECTION_NAME,
         embedding_function=embeddings,
         persist_directory=PERSISTENCE_DIR,
     )
@@ -87,7 +136,5 @@ def main():
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-    main()
+    # main()
+    print("foo")
