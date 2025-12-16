@@ -33,9 +33,6 @@ Contains library code.
 
 Standalone python scripts to run some functionalities, like creating a vector store or reading a database. Each script contains its own set of dependencies and can be run without this project.
 
-## Contributing
-
-As of now, this project **is not** accepting outside contributions. Though, that may change in the future.
 
 ## License
 
