@@ -8,7 +8,6 @@ from langchain_core.tools import BaseTool, tool
 from langchain_core.vectorstores import VectorStore
 from langgraph.types import Checkpointer
 
-
 BANCO_BOT_SYSTEM_PROMPT = SystemMessage(
     "Você é um chatbot de banco. "
     "Sua especialidade é fornecer informações claras, precisas e acessíveis sobre programas de fidelidade do banco X, milhagem de companhias parceiras do banco X,"
@@ -23,7 +22,7 @@ BANCO_BOT_SYSTEM_PROMPT = SystemMessage(
 
 
 class BancoAgent:
-    """Banco Agent Graph. Allows control over model, tools avaiable, prompt
+    """Banco Agent. Allows control over model, tools avaiable, prompt
     engeneering and checkpointer saver."""
 
     def __init__(
