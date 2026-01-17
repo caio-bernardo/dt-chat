@@ -12,7 +12,7 @@ class ChatBotBase:
     def __init__(
         self,
         model: BaseChatModel | str,
-        prompt_eng: SystemMessage,
+        prompt_eng: SystemMessage | str,
         toolkit: Sequence[BaseTool] = [],
         saver: Checkpointer = None,
     ):
@@ -22,8 +22,6 @@ class ChatBotBase:
             system_prompt=prompt_eng,
             checkpointer=saver,
         )
-
-        self.thread_id = uuid.uuid4()
 
     def process_message(self, thread_id: uuid.UUID, message: HumanMessage) -> AIMessage:
         """Process an incoming human message and return the AIMessage response.
@@ -55,4 +53,10 @@ class ChatBotBase:
         return res["messages"][-1]
 
 
-__all__ = ["ChatBotBase", "BaseChatModel", "SystemMessage", "HumanMessage"]
+__all__ = [
+    "ChatBotBase",
+    "BaseChatModel",
+    "SystemMessage",
+    "HumanMessage",
+    "Checkpointer",
+]

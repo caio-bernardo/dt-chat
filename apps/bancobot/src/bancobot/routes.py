@@ -3,10 +3,9 @@ from typing import Annotated, Sequence
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import UUID4
 
-from .services import BancoBotService
-
 from .dependecies import get_bbchat_service
 from .models import Message, MessageCreate
+from .services import BancoBotService
 
 ### Routes
 router = APIRouter()

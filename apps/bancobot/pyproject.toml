@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 
 dependencies = [
+    "chatbot",
     "fastapi[all]>=0.123.9",
     "langchain>=1.1.0",
     "langchain-chroma>=1.0.0",
@@ -40,3 +41,6 @@ bancobot = "bancobot:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+chatbot = { workspace = true }

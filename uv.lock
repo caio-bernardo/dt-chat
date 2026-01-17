@@ -203,6 +203,7 @@ name = "bancobot"
 version = "0.2.0"
 source = { editable = "apps/bancobot" }
 dependencies = [
+    { name = "chatbot" },
     { name = "fastapi", extra = ["all"] },
     { name = "langchain" },
     { name = "langchain-chroma" },
@@ -230,6 +231,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "chatbot", editable = "libs/chatbot" },
     { name = "fastapi", extras = ["all"], specifier = ">=0.123.9" },
     { name = "langchain", specifier = ">=1.1.0" },
     { name = "langchain-chroma", specifier = ">=1.0.0" },

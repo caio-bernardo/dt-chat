@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+- `TimingMetadata` for message creation, containing info about user's message.
+
+### Changed
+- `BancoAgent` inherits from `chatbot` library.
+
 ## [0.2.0] -- 2025-12-13
 
 ### Added
@@ -20,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - project setup, including pyproject.toml
 - README basics
 
-### Modified
+### Changed
 - migrate to MIT License
 
 [Unreleased]: https://github.com/caio-bernardo/dt-chat/compare/v0.2.0...HEAD
