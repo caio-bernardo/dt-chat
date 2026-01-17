@@ -1,9 +1,10 @@
 from typing import Sequence
 
+from chatbot import HumanMessage
 from pydantic import UUID4
 from sqlmodel import Session, desc, select
 
-from .agent import BancoAgent, HumanMessage
+from .agent import BancoAgent
 from .models import Message, MessageCreate, MessageType
 
 
@@ -20,7 +21,8 @@ class BancoBotService:
             self.storage.add(message)
             self.storage.commit()
             answer = self.agent.process_message(
-                message.session_id, HumanMessage(message.content)
+                message.session_id,
+                HumanMessage(message.content, timing_metadata=props.timing_metadata),
             )
             result = Message(
                 session_id=message.session_id,

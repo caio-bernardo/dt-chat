@@ -1,13 +1,8 @@
-import uuid
 from typing import Sequence
 
-from langchain.agents import create_agent
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool, tool
+from chatbot import BaseChatModel, BaseTool, ChatBotBase, Checkpointer, SystemMessage
+from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore
-from langgraph.types import Checkpointer
-
 
 BANCO_BOT_SYSTEM_PROMPT = SystemMessage(
     "Você é um chatbot de banco. "
@@ -22,8 +17,8 @@ BANCO_BOT_SYSTEM_PROMPT = SystemMessage(
 )
 
 
-class BancoAgent:
-    """Banco Agent Graph. Allows control over model, tools avaiable, prompt
+class BancoAgent(ChatBotBase):
+    """Banco Agent. Allows control over model, tools avaiable, prompt
     engeneering and checkpointer saver."""
 
     def __init__(
@@ -33,25 +28,7 @@ class BancoAgent:
         prompt_eng: SystemMessage | str = BANCO_BOT_SYSTEM_PROMPT,
         saver: Checkpointer = None,
     ):
-        self.agent = create_agent(
-            model=model,
-            tools=toolkit,
-            system_prompt=prompt_eng,
-            checkpointer=saver,
-        )
-
-    def process_message(self, thread_id: uuid.UUID, message: HumanMessage) -> AIMessage:
-        """Process an incoming human message and return the AIMessage response.
-        Args:
-            thread_id (uuid.UUID): Identifier for the conversation thread.
-            message (HumanMessage): The user's message to process.
-        Returns:
-            AIMessage: The agent's response message.
-        """
-        msg = self.agent.invoke(
-            {"messages": [message]}, {"configurable": {"thread_id": thread_id}}
-        )["messages"][-1]
-        return msg
+        super().__init__(model, prompt_eng, toolkit, saver)
 
 
 def make_search_documentation_tool(vector_store: VectorStore) -> BaseTool:

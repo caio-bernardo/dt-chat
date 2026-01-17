@@ -1,15 +1,17 @@
 ## Dependencies
 from typing import Annotated
+
 from fastapi import Depends
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langgraph.checkpoint.memory import InMemorySaver
 from sqlmodel import Session
 
-from .services import BancoBotService
-from .agent import BancoAgent
-
 import bancobot
+import bancobot.agent
+
+from .agent import BancoAgent
+from .services import BancoBotService
 
 
 def get_embeddings():
@@ -47,6 +49,9 @@ def get_session():
         yield session
 
 
-def get_bbchat_service(storage: Annotated[Session, Depends(get_session)], agent: Annotated[BancoAgent, Depends(get_banco_agent)]):
+def get_bbchat_service(
+    storage: Annotated[Session, Depends(get_session)],
+    agent: Annotated[BancoAgent, Depends(get_banco_agent)],
+):
     """Returns Banco bot service class"""
     return BancoBotService(agent=agent, storage=storage)

@@ -64,10 +64,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 load_dotenv()
 
-TARGET_DIR: str = "RAG-Cartoes"                    # Where to look for documents
-COLLECTION_NAME: str = "banco_collection"          # Name of our collection
-PERSISTENCE_DIR: str = "./chroma.db"               # Name of our vector store
-EMBEDDING_MODEL: str = "text-embedding-3-large"    # Model to create vectors
+TARGET_DIR: str = "RAG-Cartoes"  # Where to look for documents
+COLLECTION_NAME: str = "banco_collection"  # Name of our collection
+PERSISTENCE_DIR: str = "./chroma_db"  # Name of our vector store
+EMBEDDING_MODEL: str = "text-embedding-3-large"  # Model to create vectors
+
 
 def clean_metadata_value(v):
     """Clean metadata section from invalid values. It ignores scalar values,
@@ -136,5 +137,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    print("foo")
+    main()

@@ -13,10 +13,14 @@ A schematic of this research is provided below.
 
 ```sh
 dt-chat/
+├── data/
 ├── apps/
 │   └── bancobot/
+│   └── userbot/
 ├── libs/
+│   └── chatbot/
 ├── scripts/
+│   └── ...
 ```
 
 ### Applications _(apps)_
@@ -25,14 +29,21 @@ Contains packages to run necessary applications for the simulation.
 
 **bancobot**: Banco Bot, a conversational agent specialized at assisting client from Bank X. See [apps/bancobot](apps/bancobot/README.md) for more.
 
+**userbot**: User Simulator, simulates a user to interact with a chatbot. Allows time-based simulations. See [apps/userbot](apps/userbot/README.md) for more.
+
 ### Libraries _(lib)_
 
-Contains library code.
+Contains library code, it can be used by applications, scripts and outside packages.
+
+**chatbot**: Abstraction over _Langchain_ agent creation. Allow for creating basic conversational agents and iteracting with them.
 
 ### Scripts
 
 Standalone python scripts to run some functionalities, like creating a vector store or reading a database. Each script contains its own set of dependencies and can be run without this project.
 
+**embendder.py**: Create a vector store from knowlegde base documents.
+
+**userswarm.py**: Generate a batch of simulated users against a conversational agent.
 
 ## License
 

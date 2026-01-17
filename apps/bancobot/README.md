@@ -145,7 +145,7 @@ Examples:
 
 - Python
 - uv Package Manager
-- LangChain
+- [LangChain](https://python.langchain.com/docs/get_started/introduction)
 - Chroma DB
 
 ## License
