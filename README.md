@@ -55,10 +55,12 @@ uv run --script scripts/embendder.py
 
 To see what this script does and modify its behaivor see [scripts/embendder.py](scripts/embendder.py) or use `./scripts/embendder.py --help`.
 
+> This process may take sometime, but only need to be done once.
+
 5. Spin up _Banco Bot_ API Service.
 
 ```sh
-uv run --package bancobot apps/bancobot
+uv run --package bancobot bancobot
 ```
 
 To see how this works and modify its behaivor see [apps/bancobot](apps/bancobot/README.md).
