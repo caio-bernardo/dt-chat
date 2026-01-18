@@ -8,7 +8,7 @@ from pydantic.dataclasses import dataclass
 class TimeSimulationConfig:
     temporal_offset: dt.timedelta = dt.timedelta(seconds=0)
     typing_speed_wpm: float = 40.0
-    thinking_time_range: tuple = (2, 10)
+    thinking_time_range: tuple[int, int] = (2, 10)
     pause_probability: float = 0.05
     pause_time_range: tuple = (60, 3600)
     simulate_delays: bool = False

@@ -3,14 +3,16 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
+#     "langchain-openai>=1.1.7",
 #     "python-dotenv>=1.2.1",
 #     "requests>=2.32.5",
 #     "typer>=0.21.1",
-#     "userbot>=0.1.0",
+#     "userbot",
 # ]
 #
 # [tool.uv.sources]
 # userbot = { path = "../apps/userbot" }
+#
 # ///
 
 """
@@ -45,7 +47,7 @@ import typer
 import userbot
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
-from userbot.user import AIMessage, HumanMessage
+from userbot import AIMessage, HumanMessage
 
 
 @dataclass
@@ -53,7 +55,7 @@ class Persona:
     id: int
     prompt: str
     typing_speed: float
-    thinking_range: tuple[float, float]
+    thinking_range: tuple[int, int]
     temporal_offset: dt.timedelta
 
 
@@ -121,19 +123,19 @@ def calculate_temporal_offset(
 
 def parse_to_persona(id: str, data: dict[str, str]) -> Persona:
     """Retorna uma Persona dado um objeto de dicionário."""
-    match data["duracao"]:
+    match data["duração"]:
         case "lenta":
             typing_speed = random.uniform(10, 24)
-            thinking_range = (8.0, 35.0)
+            thinking_range = (8, 35)
         case "media":
             typing_speed = random.uniform(25, 54)
-            thinking_range = (2.0, 12.0)
+            thinking_range = (2, 12)
         case "rapida":
             typing_speed = random.uniform(55, 90)
-            thinking_range = (2.0, 7.0)
+            thinking_range = (2, 7)
         case _:
             typing_speed = random.uniform(25, 54)
-            thinking_range = (2.0, 12.0)
+            thinking_range = (2, 12)
 
     temporal_offset = calculate_temporal_offset(
         data["offset"], weekend=data["weekend"] == "true"
@@ -158,7 +160,7 @@ def query_bancobot(
     if session_id is not None:
         payload["session_id"] = session_id
 
-    response = requests.post(f"{api_url}/chat", json=payload)
+    response = requests.post(f"{api_url}/messages", json=payload)
 
     if session_id is None:
         session_id = response.json()["session_id"]
@@ -172,7 +174,7 @@ def init_user(
     api_url: str,
     temporal_offset: dt.timedelta,
     typing_speed: float,
-    thinking_range: tuple[float, float],
+    thinking_range: tuple[int, int],
     pause_probability: float,
     pause_time_range: tuple[float, float],
     simulate_delays: bool,
