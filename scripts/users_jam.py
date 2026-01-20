@@ -7,12 +7,11 @@
 #     "python-dotenv>=1.2.1",
 #     "requests>=2.32.5",
 #     "typer>=0.21.1",
-#     "userbot",
+#     "userbot"
 # ]
 #
 # [tool.uv.sources]
 # userbot = { path = "../apps/userbot" }
-#
 # ///
 
 """
@@ -151,19 +150,24 @@ def parse_to_persona(id: str, data: dict[str, str]) -> Persona:
 
 
 def query_bancobot(
-    api_url: str, session_id: Optional[str], query: HumanMessage
+    api_url: str, session: dict[str, Optional[str]], query: HumanMessage
 ) -> AIMessage:
     """Executa uma query para a API BancoBot."""
 
-    payload = {"content": str(query.content)}
+    assert query.timing_metadata, "Error: no timing_metadata in HumanMessage."
 
-    if session_id is not None:
-        payload["session_id"] = session_id
+    payload = {
+        "content": str(query.content),
+        "timing_metadata": query.timing_metadata,
+    }
+
+    if session.get("id") is not None:
+        payload["session_id"] = session["id"]
 
     response = requests.post(f"{api_url}/messages", json=payload)
 
-    if session_id is None:
-        session_id = response.json()["session_id"]
+    if session.get("id") is None:
+        session["id"] = response.json()["session_id"]
     response.raise_for_status()
     return AIMessage(content=response.json()["content"])
 
@@ -180,12 +184,12 @@ def init_user(
     simulate_delays: bool,
 ):
     """Inicia a simulação de um UserBot."""
-    session_id = None
+    session: dict[str, Optional[str]] = {"id": None}
 
     user = userbot.UserBot(
         prompt,
         LLM_MODEL,
-        lambda query: query_bancobot(api_url, session_id, query),
+        lambda query: query_bancobot(api_url, session, query),
         InMemorySaver(),
     )
     user.run(
@@ -224,9 +228,6 @@ def main(
         workers (int): number of worker threads to use (defaults to 4)
         sequential (bool): run users sequentially (overrides workers) (defaults to False)
         times (int): number of times to run each user (defaults to 1)
-        typing_speed (int): typing speed in words per minute (defaults to 40)
-        thinking_min (float): minimum time to think in seconds (defaults to 2.0)
-        thinking_max (float): maximum time to think in seconds (defaults to 10.0)
         pause_probability (float): probability of pausing between messages (defaults to 0.05)
         pause_min (float): minimum pause time in seconds (defaults to 60.0)
         pause_max (float): maximum pause time in seconds (defaults to 3600.0)
@@ -254,6 +255,7 @@ def main(
         print(f"Error: Problem parsing personas: {e}")
         exit(1)
 
+    print("INFO: Init simulation")
     if sequential:
         for persona in personas:
             init_user(
