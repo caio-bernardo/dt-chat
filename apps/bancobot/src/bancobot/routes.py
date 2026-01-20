@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import UUID4
 
 from .dependecies import get_bbchat_service
-from .models import Message, MessageCreate
+from .models import MessageCreate, MessagePublic
 from .services import BancoBotService
 
 ### Routes
@@ -35,7 +35,7 @@ async def get_sessions(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/sessions/{id}", response_model=Sequence[Message])
+@router.get("/sessions/{id}", response_model=Sequence[MessagePublic])
 async def fetch_session(
     id: UUID4, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
 ):
@@ -58,7 +58,7 @@ async def delete_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/messages", response_model=Message, status_code=201)
+@router.post("/messages", response_model=MessagePublic, status_code=201)
 async def create_message(
     props: MessageCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],

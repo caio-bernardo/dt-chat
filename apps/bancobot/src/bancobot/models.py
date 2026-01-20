@@ -4,18 +4,27 @@ import uuid
 from typing import Optional
 
 from pydantic import UUID4
-from sqlmodel import Column, Enum, Field, SQLModel
+from sqlmodel import Column, Enum, Field, Relationship, SQLModel
+
+
+class TimingMetadata(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    simulated_timestamp: dt.datetime
+    typing_time: float
+    pause_time: float
+    thinking_time: float
+
+
+class TimingMetadataCreatePublic(SQLModel):
+    simulated_timestamp: dt.datetime
+    typing_time: float
+    pause_time: float
+    thinking_time: float
 
 
 class MessageType(str, enum.Enum):
     AI = "ai"
-    Human = "Human"  # Aksually... it may not be a human but represents a client
-
-
-class TimingMetadata(SQLModel, table=False):
-    typing_time: float
-    pause_time: float
-    thinking_time: float
+    Human = "human"  # Aksually... it may not be a human but represents a client
 
 
 class Message(SQLModel, table=True):
@@ -26,10 +35,23 @@ class Message(SQLModel, table=True):
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
     )
 
+    timing_metadata_id: Optional[int] = Field(
+        default=None, foreign_key="timingmetadata.id"
+    )
+    timing_metadata: Optional[TimingMetadata] = Relationship()
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+
+
+class MessagePublic(SQLModel):
+    id: int
+    session_id: UUID4
+    content: str
+    type: MessageType
+    timing_metadata: Optional[TimingMetadataCreatePublic]
+    created_at: dt.datetime
 
 
 class MessageCreate(SQLModel):
     session_id: Optional[UUID4] = None
     content: str
-    timing_metadata: Optional[TimingMetadata] = None
+    timing_metadata: Optional[TimingMetadataCreatePublic] = None
