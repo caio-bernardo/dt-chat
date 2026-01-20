@@ -1,8 +1,7 @@
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
-
-from userbot import UserBot
+from src.userbot import UserBot
 
 session_id = None
 
