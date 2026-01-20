@@ -2,10 +2,10 @@ from typing import Sequence
 
 from chatbot import HumanMessage
 from pydantic import UUID4
-from sqlmodel import Session, desc, select
+from sqlmodel import Session, col, desc, select
 
 from .agent import BancoAgent
-from .models import Message, MessageCreate, MessageType
+from .models import Message, MessageCreate, MessageType, TimingMetadata
 
 
 class BancoBotService:
@@ -16,18 +16,45 @@ class BancoBotService:
         self.storage = storage
 
     async def create_message(self, props: MessageCreate) -> Message:
+        """Create a message of bancobot, answering a previous message."""
         try:
-            message = Message(**props.model_dump())
+            timing_metadata = (
+                TimingMetadata(**props.timing_metadata.model_dump())
+                if props.timing_metadata
+                else None
+            )
+            message = Message(
+                session_id=props.session_id,  # pyright: ignore[reportArgumentType]
+                content=props.content,
+                type=MessageType.Human,
+                timing_metadata=timing_metadata,
+            )
             self.storage.add(message)
             self.storage.commit()
+
+            # LLM call
             answer = self.agent.process_message(
                 message.session_id,
                 HumanMessage(message.content, timing_metadata=props.timing_metadata),
             )
+
+            # Usamos o mesmo timestamp da pergunta para o BancoBot
+            answer_metadata = (
+                TimingMetadata(
+                    simulated_timestamp=message.timing_metadata.simulated_timestamp,
+                    pause_time=0,
+                    typing_time=0,
+                    thinking_time=0,
+                )
+                if message.timing_metadata
+                else None
+            )
+
             result = Message(
                 session_id=message.session_id,
                 content=str(answer.content),
                 type=MessageType.AI,
+                timing_metadata=answer_metadata,
             )
             self.storage.add(result)
             self.storage.commit()
@@ -37,10 +64,12 @@ class BancoBotService:
             raise e
 
     async def get_message_by_session(self, id: UUID4) -> Sequence[Message]:
-        """Get all messages for a specific session."""
+        """Get all messages for a specific session, orderer by time of creation, older first."""
         try:
             return self.storage.exec(
-                select(Message).where(Message.session_id == id)
+                select(Message)
+                .order_by(col(Message.created_at))
+                .where(Message.session_id == id)
             ).all()
         except Exception as e:
             raise e
@@ -48,7 +77,9 @@ class BancoBotService:
     async def get_all_sessions(self) -> Sequence[UUID4]:
         """Get all unique session IDs."""
         try:
-            return self.storage.exec(select(Message.session_id).distinct()).all()
+            return self.storage.exec(
+                select(Message.session_id).distinct().order_by(col(Message.created_at))
+            ).all()
         except Exception as e:
             raise e
 

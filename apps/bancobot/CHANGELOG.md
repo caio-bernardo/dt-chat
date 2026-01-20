@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] -- 2026-01-19
+
 ## Added
 - `TimingMetadata` for message creation, containing info about user's message.
 
-### Changed
+### Modified
 - `BancoAgent` inherits from `chatbot` library.
+- `BancoAgent` saves checkpoints in sqlite database
+- `Message` caries now metadata about the timinig simulation. Both AI and Human messages carry the metadata, AI messages have the simulated timestamp of the incoming human message.
+- Add checkpoint saver as a dependecy for the agent, so it less coupled.
+
+### Removed
+- throw away tests since everything broke. (terrible practice I know)
 
 ## [0.2.0] -- 2025-12-13
 
@@ -28,7 +36,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - migrate to MIT License
-
-[Unreleased]: https://github.com/caio-bernardo/dt-chat/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/caio-bernardo/dt-chat/releases/tag/v0.2.0
-[0.1.0]: https://github.com/caio-bernardo/dt-chat/releases/tag/v0.1.0

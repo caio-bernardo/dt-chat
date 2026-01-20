@@ -1,6 +1,7 @@
 ## Dependencies
 from typing import Annotated
 
+from chatbot import Checkpointer
 from fastapi import Depends
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
@@ -35,10 +36,15 @@ def get_search_tool():
     return bancobot.agent.make_search_documentation_tool(vector_store)
 
 
-def get_banco_agent():
+def get_memory_saver() -> Checkpointer:
+    """Returns a Memory Saver for checkpoiting"""
+    return InMemorySaver()
+
+
+def get_banco_agent(saver: Annotated[Checkpointer, Depends(get_memory_saver)]):
     """Returns Banco Agent"""
     search_tool = get_search_tool()
-    return BancoAgent(model="gpt-4.1", toolkit=[search_tool], saver=InMemorySaver())
+    return BancoAgent(model="gpt-4.1", toolkit=[search_tool], saver=saver)
 
 
 def get_session():

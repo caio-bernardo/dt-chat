@@ -1,4 +1,4 @@
-# !/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 #
 # /// script
 # requires-python = ">=3.12"
@@ -8,53 +8,16 @@
 #     "langchain-openai",
 #     "langchain-text-splitters",
 #     "python-dotenv",
+#     "typer>=0.19.2",
 # ]
 # ///
 
-"""
-# Embendder Script
-
-Script to create a vector store from our documents database. Used by to create our _Banco Bot_ agent.
-
-## Usage
-
-1. Configure the Environment
-
-```sh
-cp .env.example .env
-```
-
-Update the `.env` with your configuration:
-- OpenAI API Key
-
-2. Configure Local variables
-
-Initially the script will execute with the following variables:
-
-```python
-TARGET_DIR: str = "RAG-Cartoes"                    # Where to look for documents
-COLLECTION_NAME: str = "banco_collection"          # Name of our collection
-PERSISTENCE_DIR: str = "./chroma.db"               # Name of our vector store
-EMBEDDING_MODEL: str = "text-embedding-3-large"    # Model to create vectors
-```
-
-You may modify it to your needs.
-
-3. Run the script
-
-```sh
-uv run scripts/embendder.py
-```
-
-## License
-
-This project is licensed under the MIT License -- see the [LICENSE](../../LICENSE) file for details.
-"""
 
 import json
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
+import typer
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -118,17 +81,29 @@ def split_documents(
     return text_splitter.split_documents(docs)
 
 
-def main():
-    files = gather_documents(Path(TARGET_DIR))
+def main(
+    target_dir: str = TARGET_DIR,
+    embedding_model: str = EMBEDDING_MODEL,
+    persist_dir: str = PERSISTENCE_DIR,
+    collection_name: str = COLLECTION_NAME,
+):
+    """
+    Script to create a vector store from our documents database.
+    To use this script you need access to an OpenAI Embendding Model.
+
+    This project is licensed under the MIT License -- see https://mit-license.org/ for details.
+    """
+
+    files = gather_documents(Path(target_dir))
     docs = split_documents(lazy_load_documents(files))
     clean_docs = [clean_document(d) for d in docs]
 
-    embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    embeddings = OpenAIEmbeddings(model=embedding_model)
 
     vector_store = Chroma(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection_name,
         embedding_function=embeddings,
-        persist_directory=PERSISTENCE_DIR,
+        persist_directory=persist_dir,
     )
 
     _ = vector_store.add_documents(documents=clean_docs)
@@ -137,4 +112,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)

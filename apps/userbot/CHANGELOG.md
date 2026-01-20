@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Fixed
+- Include `simulated_timestamp` to metadata of messages.
+- Removed debug prints
 
 ## [0.1.0]
 
 ### Added
 - `UserBot` class to create a conversational agent with a personality and mission, aiming to accomplish it at maximum `N` iterations with a chatbot.
 - `TimingSimulationConfig` to configure typing speed, pauses and more.
-- Simple test case. 
-
-[Unreleased]: https://github.com/caio-bernardo/dt-chat/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/caio-bernardo/dt-chat/releases/tag/v0.1.0
+- Simple test case.

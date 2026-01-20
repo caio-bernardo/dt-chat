@@ -73,9 +73,10 @@ class UserBot(ChatBotBase):
             simulated_timestamp += typing_time
 
             timing_metadata = {
-                "typing_time": typing_time,
-                "thinking_time": thinking_time,
-                "pause_time": pause_time,
+                "simulated_timestamp": simulated_timestamp.isoformat(),
+                "typing_time": typing_time.total_seconds(),
+                "thinking_time": thinking_time.total_seconds(),
+                "pause_time": pause_time.total_seconds(),
             }
             ##### FIM da Simulação de Tempo ####
 
@@ -85,15 +86,9 @@ class UserBot(ChatBotBase):
                 ).content
             )
 
-            print("=" * 8, "USUÁRIO", "=" * 8)
-            print(response)
-
             if self.EXIT_SAFE_WORD in response.lower():
                 print("=" * 8, "USUÁRIO ENCERROU A CONVERSA", "=" * 8)
                 break
-
-            print("=" * 8, "BOT", "=" * 8)
-            print(query)
 
             if self.EXIT_SAFE_WORD in query.lower():
                 print("=" * 8, "BANCO ENCERROU A CONVERSA", "=" * 8)
