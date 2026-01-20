@@ -68,11 +68,11 @@ To see how this works and modify its behaivor see [apps/bancobot](apps/bancobot/
 6. Populate the databases with a swarm of users.
 Run the following script:
 ```sh
-chmod +x scripts/userswarm.py
-./scripts/userswarm.py
+chmod +x scripts/users_jam.py
+./scripts/users_jam.py
 ```
 
-To see what this script does and modify its behavior see [scripts/userswarm.py](scripts/userswarm.py) or use `./scripts/userswarm.py --help`.
+To see what this script does and modify its behavior see [scripts/users_jam.py](scripts/users_jam.py) or use `./scripts/users_jam.py --help`.
 
 ## Project Structure
 
@@ -108,7 +108,7 @@ Standalone python scripts to run some functionalities, like creating a vector st
 
 **embendder.py**: Create a vector store from knowlegde base documents.
 
-**userswarm.py**: Generate a batch of simulated users against a conversational agent.
+**users_jam.py**: Generate a batch of simulated users against a conversational agent.
 
 ## License
 
