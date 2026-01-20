@@ -18,3 +18,11 @@ members = [
     "scripts/*",
     "libs/*",
 ]
+
+[dependency-groups]
+dev = [
+    "taskipy>=1.14.1",
+]
+
+[tool.taskipy.tasks]
+run_bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
