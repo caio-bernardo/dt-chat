@@ -11,7 +11,7 @@
 # ]
 #
 # [tool.uv.sources]
-# userbot = { path = "../apps/userbot" }
+# userbot = { path = "../libs/userbot" }
 # ///
 
 """
@@ -43,10 +43,9 @@ from typing import Optional
 
 import requests
 import typer
-import userbot
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
-from userbot import AIMessage, HumanMessage
+from userbot import AIMessage, HumanMessage, TimeSimulationConfig, UserBot
 
 
 @dataclass
@@ -186,7 +185,7 @@ def init_user(
     """Inicia a simulação de um UserBot."""
     session: dict[str, Optional[str]] = {"id": None}
 
-    user = userbot.UserBot(
+    user = UserBot(
         prompt,
         LLM_MODEL,
         lambda query: query_bancobot(api_url, session, query),
@@ -194,7 +193,7 @@ def init_user(
     )
     user.run(
         "Olá, cliente do Banco X.",
-        timesim_config=userbot.TimeSimulationConfig(
+        timesim_config=TimeSimulationConfig(
             temporal_offset=temporal_offset,
             typing_speed_wpm=typing_speed,
             thinking_time_range=thinking_range,
