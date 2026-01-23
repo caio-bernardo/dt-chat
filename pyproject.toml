@@ -26,3 +26,4 @@ dev = [
 
 [tool.taskipy.tasks]
 run_bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
+visualizer = "uv run --package visualizer streamlit run apps/visualizer/src/visualizer"
