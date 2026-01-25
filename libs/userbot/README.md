@@ -62,7 +62,7 @@ See the next section for a example case.
 There is a simple test/example case in the `tests/` directory. To run the test use:
 
 ```sh
-uv run --package userbot apps/userbot/tests/run_test.py
+uv run --package userbot libs/userbot/tests/run_test.py
 ``` 
 
 You can also see an actual usecase in [userswarm.py](../../scripts/userswarm.py).
@@ -70,7 +70,7 @@ You can also see an actual usecase in [userswarm.py](../../scripts/userswarm.py)
 ## Built With
 - Python 3.12
 - uv package manager
-- [chatbot library](../../libs/chatbot)
+- [chatbot library](./chatbot)
 
 ## License
 

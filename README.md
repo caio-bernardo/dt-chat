@@ -81,9 +81,10 @@ dt-chat/
 ├── data/
 ├── apps/
 │   └── bancobot/
-│   └── userbot/
+│   └── visualizer/
 ├── libs/
 │   └── chatbot/
+│   └── userbot/
 ├── scripts/
 │   └── ...
 ```
@@ -94,13 +95,15 @@ Contains packages to run necessary applications for the simulation.
 
 **bancobot**: Banco Bot, a conversational agent specialized at assisting client from Bank X. See [apps/bancobot](apps/bancobot/README.md) for more.
 
-**userbot**: User Simulator, simulates a user to interact with a chatbot. Allows time-based simulations. See [apps/userbot](apps/userbot/README.md) for more.
+**visualizer**: Visualizer, allows to views messages by session from the bancobot. See [apps/visualizer](apps/visualizer/README.md) for more.
 
 ### Libraries _(lib)_
 
 Contains library code, it can be used by applications, scripts and outside packages.
 
 **chatbot**: Abstraction over _Langchain_ agent creation. Allow for creating basic conversational agents and iteracting with them.
+
+**userbot**: User Simulator, simulates a user to interact with a chatbot. Allows time-based simulations. See [libs/userbot](libs/userbot/README.md) for more.
 
 ### Scripts
 

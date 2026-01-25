@@ -1,3 +1,5 @@
+import asyncio
+from asyncio import Queue
 from typing import Sequence
 
 from chatbot import HumanMessage
@@ -14,6 +16,7 @@ class BancoBotService:
     def __init__(self, agent: BancoAgent, storage: Session):
         self.agent = agent
         self.storage = storage
+        self.subscribers: set[Queue[Message]] = set()
 
     async def create_message(self, props: MessageCreate) -> Message:
         """Create a message of bancobot, answering a previous message."""
@@ -114,6 +117,14 @@ class BancoBotService:
         except Exception as e:
             raise e
 
+    async def get_messages(self) -> Sequence[Message]:
+        """Fetches all messages from the chatbot."""
+        try:
+            messages = self.storage.exec(select(Message)).all()
+            return messages
+        except Exception as e:
+            raise e
+
     async def get_recent_messages(
         self, session_id: UUID4, limit: int = 10
     ) -> Sequence[Message]:
@@ -128,3 +139,20 @@ class BancoBotService:
             return messages
         except Exception as e:
             raise e
+
+    def subscribe(self, subscriptor: Queue):
+        self.subscribers.add(subscriptor)
+
+    def unsubscribe(self, subscriptor: Queue):
+        self.subscribers.remove(subscriptor)
+
+    async def publish(self, msg: Message):
+        if self.subscribers:
+            await asyncio.gather(
+                *[subscriptor.put(msg) for subscriptor in self.subscribers]
+            )
+
+    async def create_and_publish_message(self, props: MessageCreate) -> Message:
+        created_message = await self.create_message(props)
+        await self.publish(created_message)
+        return created_message

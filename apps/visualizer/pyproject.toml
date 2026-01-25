@@ -1,0 +1,19 @@
+[project]
+name = "visualizer"
+version = "0.1.0"
+description = "Visualizer for bancobot interactions."
+readme = "README.md"
+authors = [
+    { name = "Caio Bernardo", email = "caiovb@protonmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "streamlit>=1.53.0",
+]
+
+[project.scripts]
+visualizer = "visualizer:main"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"

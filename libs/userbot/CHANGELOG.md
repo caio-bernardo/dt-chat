@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Modified
+- Transform this into a library. Since it has no application use. 
+
 ## [0.1.1]
 
 ### Fixed

@@ -1,4 +1,5 @@
 ## Dependencies
+from functools import lru_cache
 from typing import Annotated
 
 from chatbot import Checkpointer
@@ -55,6 +56,7 @@ def get_session():
         yield session
 
 
+@lru_cache()
 def get_bbchat_service(
     storage: Annotated[Session, Depends(get_session)],
     agent: Annotated[BancoAgent, Depends(get_banco_agent)],
