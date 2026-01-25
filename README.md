@@ -81,6 +81,7 @@ dt-chat/
 ├── data/
 ├── apps/
 │   └── bancobot/
+│   └── visualizer/
 ├── libs/
 │   └── chatbot/
 │   └── userbot/
@@ -94,6 +95,7 @@ Contains packages to run necessary applications for the simulation.
 
 **bancobot**: Banco Bot, a conversational agent specialized at assisting client from Bank X. See [apps/bancobot](apps/bancobot/README.md) for more.
 
+**visualizer**: Visualizer, allows to views messages by session from the bancobot. See [apps/visualizer](apps/visualizer/README.md) for more.
 
 ### Libraries _(lib)_
 
