@@ -54,4 +54,5 @@ class MessagePublic(SQLModel):
 class MessageCreate(SQLModel):
     session_id: Optional[UUID4] = None
     content: str
+    type: MessageType = Field(default=MessageType.Human)
     timing_metadata: Optional[TimingMetadataCreatePublic] = None

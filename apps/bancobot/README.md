@@ -6,6 +6,7 @@ Banco Bot is a conversational agent specialized in helping clients from the _fic
 - Json API to interact with LLM Model
 - Agent can use **Retrieval Augmentanted Generation** (RAG) to answer user's questions
 - Save and retrieve conversations through a session system.
+- Follow messages creations through a endpoint stream or Redis.
 - Swagger Documentation at `BASE_URL/docs`.
 
 ## Prerequisites
@@ -13,6 +14,7 @@ Banco Bot is a conversational agent specialized in helping clients from the _fic
 - [uv Package Manager](https://docs.astral.sh/uv/)
 - OpenAI API Key
 - LangSmith API Key (optional, only if you want tracing for your llm model) 
+- Redis Database
 
 ## Install
 
@@ -59,7 +61,13 @@ uv run scripts/embendder.py
 
 > See [embendder.py](../../scripts/embendder.py) to more information and how to configure it.
 
+5. Install Redis
+
+See this link: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/. On how to install and start Redis on your machine.
+
 ## Usage
+
+> Always make sure Redis is running when the application starts!
 
 1. Development
 
@@ -118,35 +126,13 @@ curl -X DELETE http://localhost:8000/sessions/<SESSION_UUID>
 ```
 Returns HTTP 204 No Content on success. If an error occurs, the API will return an appropriate error status and detail message (HTTP 4xx/5xx).
 
-## Testing
-
-Tests live at `tests` folder. Use the script `run_tests.py` to control how tests are runned.
-
-Usage:
-
-```sh
-    uv run --package bancobot apps/bancobot/tests/run_tests.py  [options]
-```
-
-Examples:
-
-```sh
-    uv run --package bancobot apps/bancobot/tests/run_tests.py                  # Run all tests
-    uv run --package bancobot apps/bancobot/tests/run_tests.py --unit           # Run only unit tests
-    uv run --package bancobot apps/bancobot/tests/run_tests.py --integration    # Run only integration tests
-    uv run --package bancobot apps/bancobot/tests/run_tests.py --coverage       # Run with coverage report
-    uv run --package bancobot apps/bancobot/tests/run_tests.py --verbose        # Run with verbose output
-    uv run --package bancobot apps/bancobot/tests/run_tests.py --fast           # Run without slow tests
-```
-
-> Note: you may also use `cd apps/bancobot/tests` to shor the path.
-
 ## Built With
 
 - Python
 - uv Package Manager
 - [LangChain](https://python.langchain.com/docs/get_started/introduction)
 - Chroma DB
+- Redis
 
 ## License
 

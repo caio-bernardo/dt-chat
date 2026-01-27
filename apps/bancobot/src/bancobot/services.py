@@ -1,39 +1,33 @@
-import asyncio
-from asyncio import Queue
 from typing import Sequence
 
+import redis.asyncio as redis
 from chatbot import HumanMessage
 from pydantic import UUID4
 from sqlmodel import Session, col, desc, select
 
 from .agent import BancoAgent
-from .models import Message, MessageCreate, MessageType, TimingMetadata
+from .models import (
+    Message,
+    MessageCreate,
+    MessageType,
+    TimingMetadata,
+    TimingMetadataCreatePublic,
+)
 
 
 class BancoBotService:
     """BancoBot' service to create a new agent with special prompt engeneering."""
 
-    def __init__(self, agent: BancoAgent, storage: Session):
+    def __init__(self, agent: BancoAgent, storage: Session, r: redis.Redis):
         self.agent = agent
         self.storage = storage
-        self.subscribers: set[Queue[Message]] = set()
+        self.redis = r
+        self.msg_stream = "msg_chan"
 
     async def create_message(self, props: MessageCreate) -> Message:
         """Create a message of bancobot, answering a previous message."""
         try:
-            timing_metadata = (
-                TimingMetadata(**props.timing_metadata.model_dump())
-                if props.timing_metadata
-                else None
-            )
-            message = Message(
-                session_id=props.session_id,  # pyright: ignore[reportArgumentType]
-                content=props.content,
-                type=MessageType.Human,
-                timing_metadata=timing_metadata,
-            )
-            self.storage.add(message)
-            self.storage.commit()
+            message = await self.save_and_publish_message(props, props.timing_metadata)
 
             # LLM call
             answer = self.agent.process_message(
@@ -43,7 +37,7 @@ class BancoBotService:
 
             # Usamos o mesmo timestamp da pergunta para o BancoBot
             answer_metadata = (
-                TimingMetadata(
+                TimingMetadataCreatePublic(
                     simulated_timestamp=message.timing_metadata.simulated_timestamp,
                     pause_time=0,
                     typing_time=0,
@@ -53,16 +47,14 @@ class BancoBotService:
                 else None
             )
 
-            result = Message(
+            payload = MessageCreate(
                 session_id=message.session_id,
                 content=str(answer.content),
                 type=MessageType.AI,
                 timing_metadata=answer_metadata,
             )
-            self.storage.add(result)
-            self.storage.commit()
-            self.storage.refresh(result)
-            return result
+
+            return await self.save_and_publish_message(payload, answer_metadata)
         except Exception as e:
             raise e
 
@@ -140,19 +132,57 @@ class BancoBotService:
         except Exception as e:
             raise e
 
-    def subscribe(self, subscriptor: Queue):
-        self.subscribers.add(subscriptor)
-
-    def unsubscribe(self, subscriptor: Queue):
-        self.subscribers.remove(subscriptor)
-
     async def publish(self, msg: Message):
-        if self.subscribers:
-            await asyncio.gather(
-                *[subscriptor.put(msg) for subscriptor in self.subscribers]
-            )
+        """Publish a Message to a internal channel as json string."""
+        await self.redis.xadd(self.msg_stream, {"payload": msg.model_dump_json()})
 
-    async def create_and_publish_message(self, props: MessageCreate) -> Message:
-        created_message = await self.create_message(props)
-        await self.publish(created_message)
-        return created_message
+    async def subscribe_and_yield(self, request, start_from="$"):
+        """Subscribe for new messages through Redis and Yield New Messages.
+        Takes a Request and checks if the connection still exists, or else stop
+        listening.
+
+        start_from="0": Read from the begginig of messages history
+        start_from"$": Read only new messages since now.
+        """
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                msg = await self.redis.xread(
+                    {self.msg_stream: start_from}, count=1, block=1000
+                )
+
+                if msg:
+                    yield msg["data"]
+        finally:
+            pass
+
+    def save_message(
+        self,
+        props: MessageCreate,
+        timing_metadata: TimingMetadataCreatePublic | None = None,
+    ) -> Message:
+        """Saves Message to Storage"""
+        metadata = TimingMetadata.model_validate(timing_metadata)
+
+        message = Message(
+            session_id=props.session_id,  # pyright: ignore[reportArgumentType]
+            content=props.content,
+            type=MessageType.Human,
+            timing_metadata=metadata,
+        )
+        self.storage.add(message)
+        self.storage.commit()
+        self.storage.refresh(message)
+        return message
+
+    async def save_and_publish_message(
+        self,
+        props: MessageCreate,
+        timing_metadata: TimingMetadataCreatePublic | None = None,
+    ) -> Message:
+        """Save Message to Storage and Publish to Cache Channel."""
+        msg = self.save_message(props, timing_metadata)
+        await self.publish(msg)
+        return msg
