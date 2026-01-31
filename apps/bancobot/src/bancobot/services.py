@@ -1,3 +1,4 @@
+import datetime as dt
 from typing import Sequence
 
 import redis.asyncio as redis
@@ -29,16 +30,19 @@ class BancoBotService:
         try:
             message = await self.save_and_publish_message(props, props.timing_metadata)
 
+            start = dt.datetime.now()
             # LLM call
             answer = self.agent.process_message(
                 message.session_id,
                 HumanMessage(message.content, timing_metadata=props.timing_metadata),
             )
+            answer_delta = dt.datetime.now() - start
 
-            # Usamos o mesmo timestamp da pergunta para o BancoBot
+            # Usamos o timestamp da pergunta + tempo para produzir resposta do BancoBot
             answer_metadata = (
                 TimingMetadataCreatePublic(
-                    simulated_timestamp=message.timing_metadata.simulated_timestamp,
+                    simulated_timestamp=message.timing_metadata.simulated_timestamp
+                    + answer_delta,
                     pause_time=0,
                     typing_time=0,
                     thinking_time=0,
@@ -154,7 +158,7 @@ class BancoBotService:
                 )
 
                 if msg:
-                    yield msg["data"]
+                    yield {"data": msg["payload"]}
         finally:
             pass
 
