@@ -1,0 +1,147 @@
+[
+  {
+    "subtipo": "SAUDAÇÃO INICIAL DO CHATBOT",
+    "descricao": "O chatbot inicia com uma saudação formal",
+    "exemplo": "Olá! Sou o assistente virtual do Banco X. Como posso ajudar?"
+  },
+  {
+    "subtipo": "DETECÇÃO DA INTENÇÃO",
+    "descricao": "O chatbot identifica a necessidade do usuário",
+    "exemplo": "Entendi que você quer saber o limite do cartão."
+  },
+  {
+    "subtipo": "REAFIRMAÇÃO DE CONTEXTO",
+    "descricao": "O chatbot repete ou resume o contexto anterior para manter coerência",
+    "exemplo": "Na última conversa, você estava buscando o boleto da fatura. Deseja continuar?"
+  },
+  {
+    "subtipo": "ESCLARECIMENTO PROATIVO",
+    "descricao": "O chatbot oferece explicações adicionais quando detecta incerteza",
+    "exemplo": "Você quis dizer a fatura do cartão ou do empréstimo pessoal?"
+  },
+  {
+    "subtipo": "CONFIRMAÇÃO DA INTENÇÃO",
+    "descricao": "O chatbot confirma a intenção com o usuário",
+    "exemplo": "Você quer saber o limite disponível ou total?"
+  },
+  {
+    "subtipo": "RESPOSTA COM DADOS",
+    "descricao": "O chatbot retorna as informações solicitadas",
+    "exemplo": "O limite disponível no seu cartão é de R$2.500,00."
+  },
+  {
+    "subtipo": "INTENÇÃO NÃO IDENTIFICADA",
+    "descricao": "O chatbot informa que não entendeu a mensagem do usuário",
+    "exemplo": "Desculpe, não entendi. Poderia reformular sua pergunta?"
+  },
+  {
+    "subtipo": "SIMULAÇÃO DE PARCELAMENTO DE FATURA",
+    "descricao": "O chatbot realiza cálculo e apresenta opções de parcelamento",
+    "exemplo": "Você pode parcelar sua fatura em até 6x com juros de 2,5% ao mês."
+  },
+  {
+    "subtipo": "FLUXOS DIRECIONADOS",
+    "descricao": "O chatbot oferece alternativas claras para direcionar a conversa",
+    "exemplo": "Posso ajudar com: 1) Consultar saldo, 2) Limites do cartão, 3) Transferências. Qual você precisa?"
+  },
+  {
+    "subtipo": "ENCAMINHAMENTO INTERNO",
+    "descricao": "O chatbot repassa os dados a outro sistema ou fluxo interno",
+    "exemplo": "Encaminhando sua solicitação para o sistema de análise de crédito..."
+  },
+  {
+    "subtipo": "SOLICITAÇÃO DE MAIS INFORMAÇÕES",
+    "descricao": "O chatbot solicita dados adicionais para continuar",
+    "exemplo": "Preciso que você confirme o número do seu cartão."
+  },
+  {
+    "subtipo": "ENTREGA DA SOLUÇÃO",
+    "descricao": "O chatbot apresenta a resposta ou realiza a ação solicitada",
+    "exemplo": "A transferência de R$500 foi realizada com sucesso."
+  },
+  {
+    "subtipo": "SOLUÇÃO PARCIAL",
+    "descricao": "O chatbot oferece uma resposta parcial com instruções adicionais",
+    "exemplo": "Consegui consultar seu saldo, mas preciso de mais dados para a transferência."
+  },
+  {
+    "subtipo": "ENTREGA DE RESPOSTA SEM SOLUÇÃO",
+    "descricao": "O chatbot não consegue entregar uma resposta satisfatória ou conclusiva",
+    "exemplo": "Não consigo encontrar uma resposta ao seu pedido em meu sistema."
+  },
+  {
+    "subtipo": "MENSAGEM DE FECHAMENTO",
+    "descricao": "O chatbot encerra a conversa de forma amigável",
+    "exemplo": "Foi um prazer ajudar! Caso precise, é só chamar."
+  },
+  {
+    "subtipo": "RETOMADA DE CONVERSA",
+    "descricao": "O chatbot retoma uma interação anterior",
+    "exemplo": "Você ainda tem dúvidas sobre o limite do seu cartão?"
+  },
+  {
+    "subtipo": "OFERTA DE NOVAS FUNCIONALIDADES",
+    "descricao": "O chatbot sugere recursos ou ações baseados no perfil do usuário",
+    "exemplo": "Você sabia que pode aumentar o limite do seu cartão?"
+  },
+  {
+    "subtipo": "ALERTA DE COMPRA INTERNACIONAL",
+    "descricao": "O chatbot avisa quando detecta compra fora do país",
+    "exemplo": "Compra de US$120 detectada no exterior. Foi você?"
+  },
+  {
+    "subtipo": "REDIRECIONAMENTO PARA HUMANO",
+    "descricao": "O chatbot transfere a conversa para um atendente humano",
+    "exemplo": "Vou transferir você para um atendente humano."
+  },
+  {
+    "subtipo": "INTEGRAÇÃO COM APP EXTERNO",
+    "descricao": "O chatbot redireciona para outro app ou serviço parceiro",
+    "exemplo": "Para isso, você será redirecionado ao app do Cartões X."
+  },
+  {
+    "subtipo": "RECOMENDAÇÃO DE SEGURANÇA",
+    "descricao": "O chatbot sugere medidas preventivas após risco detectado",
+    "exemplo": "Por segurança, recomendamos que altere sua senha."
+  },
+  {
+    "subtipo": "ALERTA DE TENTATIVA DE PHISHING",
+    "descricao": "O chatbot detecta possível golpe e orienta o usuário",
+    "exemplo": "Recebeu SMS pedindo seus dados? Pode ser golpe. Nunca informe senhas!"
+  },
+  {
+    "subtipo": "ALERTA DE ATIVIDADE SUSPEITA",
+    "descricao": "O chatbot notifica o usuário sobre comportamentos incomuns",
+    "exemplo": "Detectamos uma transação suspeita. Confirma que foi você?"
+  },
+  {
+    "subtipo": "CONFIRMAÇÃO DE CONTATO COM CENTRAL",
+    "descricao": "O chatbot confirma que um atendente irá ligar ou que uma análise será feita",
+    "exemplo": "Nossa equipe de segurança entrará em contato nas próximas 24h."
+  },
+  {
+    "subtipo": "ABERTURA DE PROTOCOLO DE FRAUDE",
+    "descricao": "O chatbot registra o relato e inicia processo investigativo",
+    "exemplo": "Já abrimos um protocolo de análise de fraude. Em breve entraremos em contato."
+  },
+  {
+    "subtipo": "RESPOSTA GENÉRICA E EVASIVA",
+    "descricao": "O chatbot fornece uma resposta vaga ou que não trata diretamente da solicitação feita",
+    "exemplo": "Não tenho essa informação agora."
+  },
+  {
+    "subtipo": "LOOP DE REPETIÇÃO",
+    "descricao": "O chatbot repete a mesma pergunta ou instrução sem progressão na conversa",
+    "exemplo": "Por favor, informe o CPF."
+  },
+  {
+    "subtipo": "INFORMAÇÃO INCONSISTENTE",
+    "descricao": "O chatbot fornece dados contraditórios ou diferentes em uma mesma sessão",
+    "exemplo": "Limite disponível: R$1.200. → Limite disponível: R$900."
+  },
+  {
+    "subtipo": "ERRO DE EXECUÇÃO DE PROCESSO",
+    "descricao": "O chatbot afirma que realizou uma ação, mas o processo não é concluído internamente",
+    "exemplo": "Fatura enviada para seu e-mail."
+  }
+]
