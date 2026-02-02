@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] -- 2026-01-27
+
+### Modified
+- Functions now take `TimingMetadataCreatePublic` instead of `TiminiMetadata`
+
+### Added
+- Redis Database to store messages in memory, so other process can use them.
+- `/messages/stream` endpoint to stream new messages
+- All messages are send to Redis stream
+
+
 ## [0.3.0] -- 2026-01-19
 
 ## Added

@@ -1,12 +1,11 @@
-from asyncio import Queue
 from typing import Annotated, Sequence
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import UUID4
 from sse_starlette import EventSourceResponse
 
 from .dependecies import get_bbchat_service
-from .models import Message, MessageCreate, MessagePublic
+from .models import MessageCreate, MessagePublic
 from .services import BancoBotService
 
 ### Routes
@@ -83,22 +82,13 @@ async def fetch_messages(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/messages/stream", response_model=MessagePublic)
-async def stream(service: Annotated[BancoBotService, Depends(get_bbchat_service)]):
-    """Stream new created messages on the system as Server Side Events."""
-
-    async def event_generator():
-        stream: Queue[Message] = Queue()
-        service.subscribe(stream)
-        try:
-            while True:
-                new_msg = await stream.get()
-                yield new_msg
-        finally:
-            service.unsubscribe(stream)
-
+@router.get("/messages/stream")
+async def stream(
+    request: Request, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
+):
+    """Stream new created messages on the system as Server Side Event."""
     return EventSourceResponse(
-        event_generator(),
+        service.subscribe_and_yield(request),
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",

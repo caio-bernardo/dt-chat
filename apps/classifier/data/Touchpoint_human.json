@@ -1,0 +1,177 @@
+[
+    {
+        "subtipo": "FORNECIMENTO DE CPF",
+        "descrioDaInterao": "O usuário responde fornecendo seu CPF",
+        "exemplo": "\"Meu CPF é 123.456.789-00.\""
+    },
+    {
+        "subtipo": "ENVIO DE DADOS NÃO SOLICITADOS",
+        "descrioDaInterao": "O usuário antecipa dados que o bot ainda não pediu",
+        "exemplo": "\"Meu CPF é 000.111.222-33\" (sem o bot pedir)"
+    },
+    {
+        "subtipo": "RECUSA DE FORNECIMENTO DE DADOS",
+        "descrioDaInterao": "O usuário se recusa a informar dados solicitados",
+        "exemplo": "\"Prefiro não informar meu CPF agora.\""
+    },
+    {
+        "subtipo": "ESCLARECIMENTO DA INTENÇÃO",
+        "descrioDaInterao": "O usuário confirma ou corrige a intenção",
+        "exemplo": "\"Quero o limite disponível.\""
+    },
+    {
+        "subtipo": "CORREÇÃO DE ENTENDIMENTO",
+        "descrioDaInterao": "O usuário corrige uma interpretação errada do chatbot",
+        "exemplo": "\"Não, não era isso que eu queria saber.\""
+    },
+    {
+        "subtipo": "REPETIÇÃO DE INTENÇÃO",
+        "descrioDaInterao": "O usuário repete a mesma solicitação por não se sentir compreendido",
+        "exemplo": "\"Eu disse que quero saber o limite.\""
+    },
+    {
+        "subtipo": "REFORMULAÇÃO DA PERGUNTA",
+        "descrioDaInterao": "O usuário muda a forma da pergunta após não ser entendido",
+        "exemplo": "\"Deixa eu perguntar de outro jeito.\""
+    },
+    {
+        "subtipo": "EXPANSÃO DA INTENÇÃO",
+        "descrioDaInterao": "O usuário adiciona mais contexto à sua intenção",
+        "exemplo": "\"Quero saber o limite do cartão e também da conta.\""
+    },
+    {
+        "subtipo": "FORNECIMENTO DE DADOS EXTRAS",
+        "descrioDaInterao": "O usuário fornece as informações solicitadas",
+        "exemplo": "\"É o cartão final 4567.\""
+    },
+    {
+        "subtipo": "INTERRUPÇÃO DA OPERAÇÃO",
+        "descrioDaInterao": "O usuário muda de assunto ou interrompe antes da conclusão",
+        "exemplo": "\"Ah, deixa pra lá.\""
+    },
+    {
+        "subtipo": "DÚVIDA SOBRE RESPOSTA",
+        "descrioDaInterao": "O usuário demonstra incerteza sobre a informação recebida",
+        "exemplo": "\"Mas esse valor está atualizado?\""
+    },
+    {
+        "subtipo": "SOLICITAÇÃO DE TEMPO",
+        "descrioDaInterao": "O usuário pede para continuar depois ou solicita uma pausa",
+        "exemplo": "\"Pode me esperar um pouco? Já volto.\""
+    },
+    {
+        "subtipo": "CONFIRMAÇÃO DO USUÁRIO",
+        "descrioDaInterao": "O usuário confirma que a solução atendeu à necessidade",
+        "exemplo": "\"Sim, era isso que eu precisava.\""
+    },
+    {
+        "subtipo": "SOLICITAÇÃO DE DETALHE ADICIONAL",
+        "descrioDaInterao": "O usuário deseja aprofundar a resposta recebida",
+        "exemplo": "\"E quanto foi usado desse limite?\""
+    },
+    {
+        "subtipo": "REJEIÇÃO DA SOLUÇÃO",
+        "descrioDaInterao": "O usuário afirma que a solução não resolveu o problema",
+        "exemplo": "\"Isso não resolve meu problema.\""
+    },
+    {
+        "subtipo": "FEEDBACK DO USUÁRIO",
+        "descrioDaInterao": "O usuário avalia ou ignora a solicitação de feedback",
+        "exemplo": "\"Avalio com 5 estrelas.\""
+    },
+    {
+        "subtipo": "FINALIZAÇÃO COM RECLAMAÇÃO",
+        "descrioDaInterao": "O usuário encerra a conversa expressando insatisfação",
+        "exemplo": "\"Esse atendimento é péssimo.\""
+    },
+    {
+        "subtipo": "AGRADECIMENTO ESPONTÂNEO",
+        "descrioDaInterao": "O usuário finaliza a conversa com uma expressão de gratidão",
+        "exemplo": "\"Obrigado pela ajuda!\""
+    },
+    {
+        "subtipo": "RESPOSTA COM INSATISFAÇÃO",
+        "descrioDaInterao": "O usuário não aceita a resposta ou solução dada pelo chatbot",
+        "exemplo": "\"Não estou satisfeito com essa resposta. Você pode pesquisar de novo?\""
+    },
+    {
+        "subtipo": "NOVO PROBLEMA APÓS SOLUÇÃO",
+        "descrioDaInterao": "O usuário engata outro problema logo após resolver um",
+        "exemplo": "\"Aliás, meu cartão também está vencido.\""
+    },
+    {
+        "subtipo": "RETOMADA DA CONVERSA APÓS AUSÊNCIA",
+        "descrioDaInterao": "O usuário volta após ter interrompido a interação",
+        "exemplo": "\"Voltei! Podemos continuar?\""
+    },
+    {
+        "subtipo": "CONFIRMAÇÃO DE REDIRECIONAMENTO",
+        "descrioDaInterao": "O usuário aceita ou recusa o redirecionamento",
+        "exemplo": "\"OK, quero falar com um atendente.\""
+    },
+    {
+        "subtipo": "SOLICITAÇÃO DE CANAL ALTERNATIVO",
+        "descrioDaInterao": "O usuário pede outro canal (telefone, app, etc.)",
+        "exemplo": "\"Tem como resolver isso pelo app?\""
+    },
+    {
+        "subtipo": "SOLICITAÇÃO DIRETA DE HUMANO",
+        "descrioDaInterao": "O usuário solicita de forma explícita um atendimento humano",
+        "exemplo": "\"Quero falar com um atendente agora.\""
+    },
+    {
+        "subtipo": "CONFIRMAÇÃO DE SEGURANÇA",
+        "descrioDaInterao": "O usuário fornece ou nega a validação solicitada",
+        "exemplo": "\"O código é 123456.\""
+    },
+    {
+        "subtipo": "DÚVIDA SOBRE SEGURANÇA",
+        "descrioDaInterao": "O usuário questiona a segurança da interação",
+        "exemplo": "\"É seguro informar meu CPF aqui?\""
+    },
+    {
+        "subtipo": "TENTATIVA DE AUTENTICAR SEM SUCESSO",
+        "descrioDaInterao": "O usuário tenta validar, mas não consegue",
+        "exemplo": "\"Não recebi o código por SMS.\""
+    },
+    {
+        "subtipo": "ENVIO DE INFORMAÇÃO SENSÍVEL",
+        "descrioDaInterao": "O usuário compartilha dados sigilosos de forma espontânea",
+        "exemplo": "\"Minha senha é 123456\""
+    },
+    {
+        "subtipo": "TENTATIVA DE BURLAR SEGURANÇA",
+        "descrioDaInterao": "O usuário tenta forçar o atendimento sem validar identidade",
+        "exemplo": "\"Só me fala logo o limite, não precisa do CPF.\""
+    },
+    {
+        "subtipo": "CONFIRMAÇÃO DE ATIVIDADE",
+        "descrioDaInterao": "O usuário confirma ou nega ter realizado a atividade",
+        "exemplo": "\"Não foi eu. Houve fraude.\""
+    },
+    {
+        "subtipo": "BLOQUEIO DE CONTA/CARTÃO",
+        "descrioDaInterao": "O usuário solicita bloqueio imediato",
+        "exemplo": "\"Preciso bloquear minha conta imediatamente.\""
+    },
+    {
+        "subtipo": "URGÊNCIA COM LINGUAGEM AGRESSIVA",
+        "descrioDaInterao": "O usuário demonstra urgência com tom elevado",
+        "exemplo": "\"Preciso disso AGORA!\""
+    },
+    {
+        "subtipo": "DETECÇÃO DE ESTRESSE",
+        "descrioDaInterao": "O usuário demonstra alto nível de estresse ou pânico",
+        "exemplo": "\"Alguém está usando meu cartão! Me ajuda!\""
+    },
+    {
+        "subtipo": "SOLICITAÇÃO DE CANCELAMENTO",
+        "descrioDaInterao": "O usuário quer cancelar uma operação ou solicitação urgente",
+        "exemplo": "\"Cancele a transferência agora!\""
+    },
+    {
+        "subtipo": "RELATO DE FRAUDE",
+        "descrioDaInterao": "O usuário informa sobre uma atividade fraudulenta",
+        "exemplo": "\"Acho que fui vítima de fraude.\""
+    }
+]

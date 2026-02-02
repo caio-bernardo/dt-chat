@@ -1,7 +1,7 @@
 ## Dependencies
-from functools import lru_cache
 from typing import Annotated
 
+import redis.asyncio as redis
 from chatbot import Checkpointer
 from fastapi import Depends
 from langchain_chroma import Chroma
@@ -48,6 +48,11 @@ def get_banco_agent(saver: Annotated[Checkpointer, Depends(get_memory_saver)]):
     return BancoAgent(model="gpt-4.1", toolkit=[search_tool], saver=saver)
 
 
+def get_redis():
+    """Creates a Redis Connections"""
+    return redis.Redis()
+
+
 def get_session():
     """Returns a SQLite storage class"""
     from .database import engine
@@ -56,10 +61,10 @@ def get_session():
         yield session
 
 
-@lru_cache()
 def get_bbchat_service(
     storage: Annotated[Session, Depends(get_session)],
     agent: Annotated[BancoAgent, Depends(get_banco_agent)],
+    red_storage: Annotated[redis.Redis, Depends(get_redis)],
 ):
     """Returns Banco bot service class"""
-    return BancoBotService(agent=agent, storage=storage)
+    return BancoBotService(agent=agent, storage=storage, r=red_storage)
