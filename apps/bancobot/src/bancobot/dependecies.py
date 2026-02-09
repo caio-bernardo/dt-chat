@@ -1,7 +1,6 @@
 ## Dependencies
 from typing import Annotated
 
-import redis.asyncio as redis
 from chatbot import Checkpointer
 from fastapi import Depends
 from langchain_chroma import Chroma
@@ -11,6 +10,7 @@ from sqlmodel import Session
 
 import bancobot
 import bancobot.agent
+from bancobot.database import RedisStorage
 
 from .agent import BancoAgent
 from .services import BancoBotService
@@ -50,7 +50,7 @@ def get_banco_agent(saver: Annotated[Checkpointer, Depends(get_memory_saver)]):
 
 def get_redis():
     """Creates a Redis Connections"""
-    return redis.Redis()
+    return RedisStorage()
 
 
 def get_session():
@@ -64,7 +64,7 @@ def get_session():
 def get_bbchat_service(
     storage: Annotated[Session, Depends(get_session)],
     agent: Annotated[BancoAgent, Depends(get_banco_agent)],
-    red_storage: Annotated[redis.Redis, Depends(get_redis)],
+    red_storage: Annotated[RedisStorage, Depends(get_redis)],
 ):
     """Returns Banco bot service class"""
     return BancoBotService(agent=agent, storage=storage, r=red_storage)

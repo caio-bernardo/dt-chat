@@ -16,6 +16,7 @@ members = [
     "chatbot",
     "classifier",
     "dtchat",
+    "fork-engine",
     "userbot",
     "visualizer",
 ]
@@ -857,7 +858,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "pytest" },
     { name = "taskipy" },
 ]
 
@@ -865,10 +865,7 @@ dev = [
 requires-dist = [{ name = "python-dotenv", specifier = ">=1.2.1" }]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "taskipy", specifier = ">=1.14.1" },
-]
+dev = [{ name = "taskipy", specifier = ">=1.14.1" }]
 
 [[package]]
 name = "durationpy"
@@ -1097,6 +1094,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9d/1f/3ee70b0a55137442038f2a33469cc5fddd7e0ad2abf83d7497c18a2b6923/flatbuffers-25.9.23.tar.gz", hash = "sha256:676f9fa62750bb50cf531b42a0a2a118ad8f7f797a511eda12881c016f093b12", size = 22067, upload-time = "2025-09-24T05:25:30.106Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ee/1b/00a78aa2e8fbd63f9af08c9c19e6deb3d5d66b4dda677a0f61654680ee89/flatbuffers-25.9.23-py2.py3-none-any.whl", hash = "sha256:255538574d6cb6d0a79a17ec8bc0d30985913b87513a01cce8bcdb6b4c44d0e2", size = 30869, upload-time = "2025-09-24T05:25:28.912Z" },
+]
+
+[[package]]
+name = "fork-engine"
+version = "0.1.0"
+source = { editable = "apps/fork_engine" }
+dependencies = [
+    { name = "bancobot" },
+    { name = "classifier" },
+    { name = "pydantic" },
+    { name = "redis" },
+    { name = "userbot" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "bancobot", editable = "apps/bancobot" },
+    { name = "classifier", editable = "apps/classifier" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "redis", specifier = ">=7.1.0" },
+    { name = "userbot", editable = "libs/userbot" },
 ]
 
 [[package]]

@@ -1,7 +1,6 @@
 import datetime as dt
-from typing import Sequence
+from typing import Any, Sequence
 
-import redis.asyncio as redis
 from chatbot import HumanMessage
 from pydantic import UUID4
 from sqlmodel import Session, col, desc, select
@@ -16,10 +15,16 @@ from .models import (
 )
 
 
+class IStorage:
+    async def arcv(self, source: str) -> Any: ...
+
+    async def asend(self, dst: str, origin: str, value: Any): ...
+
+
 class BancoBotService:
     """BancoBot' service to create a new agent with special prompt engeneering."""
 
-    def __init__(self, agent: BancoAgent, storage: Session, r: redis.Redis):
+    def __init__(self, agent: BancoAgent, storage: Session, r: IStorage):
         self.agent = agent
         self.storage = storage
         self.redis = r
@@ -138,7 +143,9 @@ class BancoBotService:
 
     async def publish(self, msg: Message):
         """Publish a Message to a internal channel as json string."""
-        await self.redis.xadd(self.msg_stream, {"payload": msg.model_dump_json()})
+        await self.redis.asend(
+            self.msg_stream, "real", {"payload": msg.model_dump_json()}
+        )
 
     async def subscribe_and_yield(self, request, start_from="$"):
         """Subscribe for new messages through Redis and Yield New Messages.
@@ -153,9 +160,7 @@ class BancoBotService:
                 if await request.is_disconnected():
                     break
 
-                msg = await self.redis.xread(
-                    {self.msg_stream: start_from}, count=1, block=1000
-                )
+                msg = await self.redis.arcv(self.msg_stream)
 
                 if msg:
                     yield {"data": msg["payload"]}
