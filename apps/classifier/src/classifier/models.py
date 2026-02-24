@@ -29,6 +29,7 @@ class Touchpoint(SQLModel, table=True):
     actor: ActorType = Field(
         default=ActorType.SYSTEM, sa_column=Column(Enum(ActorType))
     )
+    message_id: int
     message: str
     timestamp: dt.datetime
     activity: str

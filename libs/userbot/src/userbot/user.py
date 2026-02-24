@@ -4,10 +4,13 @@ import uuid
 from typing import Callable
 
 from chatbot import BaseChatModel, ChatBotBase, Checkpointer
+from langchain_core.messages import AnyMessage
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 
 from .timing_config import TimeSimulationConfig
+
+TypedSender = Callable[[HumanMessage], AIMessage]
 
 
 class UserBot(ChatBotBase):
@@ -21,11 +24,14 @@ class UserBot(ChatBotBase):
         self,
         persona: str,
         model: BaseChatModel | str,
-        send_to_bot: Callable[[HumanMessage], AIMessage],
+        send_to_bot: TypedSender,
+        initial_messages: list[AnyMessage] = [],
         saver: Checkpointer = None,
     ) -> None:
         self.send_to_bot = send_to_bot
-        super().__init__(model, prompt_eng=persona, saver=saver)
+        super().__init__(
+            model, prompt_eng=persona, initial_messages=initial_messages, saver=saver
+        )
 
     def run(
         self,

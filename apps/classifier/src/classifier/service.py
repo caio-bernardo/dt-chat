@@ -48,6 +48,7 @@ class ClassifierService:
             session_id=case_id,
             internal_id=last_internal_id + 1,
             actor=from_message_type(msg.type),
+            message_id=msg.id or -1,
             message=msg.content,
             activity=touchpoint,
             timestamp=timestamp,
