@@ -1,7 +1,8 @@
 import datetime as dt
 import time
 import uuid
-from typing import Callable
+from abc import ABC, abstractmethod
+from typing import Dict
 
 from chatbot import BaseChatModel, ChatBotBase, Checkpointer
 from langchain_core.messages import AnyMessage
@@ -10,7 +11,15 @@ from langchain_core.messages.human import HumanMessage
 
 from .timing_config import TimeSimulationConfig
 
-TypedSender = Callable[[HumanMessage], AIMessage]
+
+class IMessageSender(ABC):
+    """Interface to allow UserBot to open a channel and communicate."""
+
+    @abstractmethod
+    def create_channel(self, data: Dict | None = None): ...
+
+    @abstractmethod
+    def send_message(self, msg: HumanMessage) -> AIMessage: ...
 
 
 class UserBot(ChatBotBase):
@@ -24,11 +33,11 @@ class UserBot(ChatBotBase):
         self,
         persona: str,
         model: BaseChatModel | str,
-        send_to_bot: TypedSender,
+        send: IMessageSender,
         initial_messages: list[AnyMessage] = [],
         saver: Checkpointer = None,
     ) -> None:
-        self.send_to_bot = send_to_bot
+        self.send_to_bot = send
         super().__init__(
             model, prompt_eng=persona, initial_messages=initial_messages, saver=saver
         )
@@ -48,6 +57,8 @@ class UserBot(ChatBotBase):
         """
         thread_id = uuid.uuid4()
         query = initial_msg
+
+        self.send_to_bot.create_channel()
 
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
 
@@ -89,7 +100,7 @@ class UserBot(ChatBotBase):
             ##### FIM da Simulação de Tempo ####
 
             query = str(
-                self.send_to_bot(
+                self.send_to_bot.send_message(
                     HumanMessage(response, timing_metadata=timing_metadata)
                 ).content
             )
