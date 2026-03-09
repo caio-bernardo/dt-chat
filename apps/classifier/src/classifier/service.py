@@ -2,7 +2,6 @@ from typing import Any
 
 import redis.asyncio as redis
 from bancobot.models import Message
-from pydantic import UUID4
 from sqlmodel import Session, col, func, select
 
 from classifier.agent import ClassifierAgent
@@ -23,7 +22,7 @@ class ClassifierService:
         $ - new messages since now"""
         return await self.redis.xread({stream: start_from}, count=1, block=1000)
 
-    def _get_last_internal_id(self, case_id: UUID4) -> int:
+    def _get_last_internal_id(self, case_id: int) -> int:
         """Returns the last used internal id from a case (equivalent for the number of messages in the case/conversation/session)"""
         return self.storage.exec(
             select(func.count(col(Touchpoint.session_id))).where(

@@ -2,7 +2,6 @@ import datetime as dt
 import enum
 
 from bancobot.models import MessageType
-from pydantic import UUID4
 from sqlmodel import Column, Enum, Field, SQLModel
 
 
@@ -24,7 +23,7 @@ def from_message_type(type: MessageType) -> ActorType:
 
 class Touchpoint(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    session_id: UUID4
+    session_id: int
     internal_id: int
     actor: ActorType = Field(
         default=ActorType.SYSTEM, sa_column=Column(Enum(ActorType))

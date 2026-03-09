@@ -1,15 +1,15 @@
 import asyncio
 import json
-from typing import Any, Generator, Optional
+from typing import Any, Optional
 
 from bancobot.models import Message, MessageType
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from sqlmodel import Session, create_engine
 from typer import Typer
 
 from classifier.agent import ClassifierAgent
+from classifier.database import create_db_and_tables, get_session
 from classifier.exporter import TouchpointExporter
 from classifier.service import ClassifierService
 
@@ -20,13 +20,6 @@ app = Typer()
 
 def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
     return ClassifierAgent(model, temperature)
-
-
-def get_session(db: str) -> Generator[Session, Any, Any]:
-    engine = create_engine(db)
-
-    with Session(engine) as session:
-        yield session
 
 
 def get_redis() -> Redis:
@@ -41,7 +34,7 @@ def load_tp_list(path: str) -> list[str]:
 
 @app.command(name="export")
 def export_command(
-    file_output: str = "output.csv", db_path: str = "sqlite:///db.sqlite3"
+    file_output: str = "output.csv", db_path: str = "sqlite:///touchpoints.db"
 ):
     """Export touchpoints to a csv file, retrieve touchpoints from `db_path`.
 
@@ -53,7 +46,8 @@ def export_command(
     and 99999 respectively, they contain the timestamp of the first and last
     message in the conversation.
     """
-    session = next(get_session(db_path))
+    engine = create_db_and_tables(db_path)
+    session = next(get_session(engine))
     exporter = TouchpointExporter(storage=session)
 
     print("Exporting touchpoints")
