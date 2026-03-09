@@ -52,7 +52,9 @@ class UserBot(ChatBotBase):
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
 
         for _ in range(max_iterations):
-            response = str(self.process_message(thread_id, HumanMessage(query)).content)
+            response = str(
+                self.process_message(str(thread_id), HumanMessage(query)).content
+            )
 
             ##### Simulação de Tempo ####
             # Intervalo de Pausa

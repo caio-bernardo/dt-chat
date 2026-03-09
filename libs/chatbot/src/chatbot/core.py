@@ -25,7 +25,7 @@ class ChatBotBase:
         )
         self._initial_messages = initial_messages
 
-    def process_message(self, thread_id: uuid.UUID, message: HumanMessage) -> AIMessage:
+    def process_message(self, thread_id: str, message: HumanMessage) -> AIMessage:
         """Process an incoming human message and return the AIMessage response.
         Args:
             thread_id (uuid.UUID): Identifier for the conversation thread.
@@ -39,7 +39,8 @@ class ChatBotBase:
             self._initial_messages = []
 
         msg = self.agent.invoke(
-            {"messages": messages}, {"configurable": {"thread_id": thread_id}}
+            {"messages": messages},  # pyright: ignore[reportArgumentType]
+            {"configurable": {"thread_id": thread_id}},
         )["messages"][-1]
         return msg
 
