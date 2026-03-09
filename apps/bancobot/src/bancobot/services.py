@@ -2,14 +2,18 @@ import datetime as dt
 from typing import Any, Sequence
 
 from chatbot import HumanMessage
+from fastapi import HTTPException
 from pydantic import UUID4
-from sqlmodel import Session, col, desc, select
+from sqlmodel import Session as DBSession
+from sqlmodel import col, desc, select
 
 from .agent import BancoAgent
 from .models import (
     Message,
     MessageCreate,
     MessageType,
+    Session,
+    SessionCreate,
     TimingMetadata,
     TimingMetadataCreatePublic,
 )
@@ -24,11 +28,46 @@ class IStorage:
 class BancoBotService:
     """BancoBot' service to create a new agent with special prompt engeneering."""
 
-    def __init__(self, agent: BancoAgent, storage: Session, r: IStorage):
+    def __init__(self, agent: BancoAgent, storage: DBSession, r: IStorage):
         self.agent = agent
         self.storage = storage
         self.redis = r
         self.msg_stream = "msg_chan"
+
+    async def create_session(self, props: SessionCreate) -> Session:
+        """Create a session, holds messages and metadata of a conversation"""
+        session = Session.model_validate(props)
+        self.storage.add(session)
+        self.storage.commit()
+        self.storage.refresh(session)
+
+        return session
+
+    async def get_all_sessions(self) -> Sequence[Session]:
+        """Retrieve all sessions"""
+        try:
+            return self.storage.exec(
+                select(Session).order_by(col(Session.created_at))
+            ).all()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def fetch_session(self, id: int) -> Session:
+        """Fecth a single session"""
+
+        session = self.storage.get(Session, id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return session
+
+    async def delete_session(self, id: int) -> None:
+        """Delete a session, also cascading their messages"""
+
+        session = self.storage.get(Session, id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        self.storage.delete(session)
+        self.storage.commit()
 
     async def create_message(self, props: MessageCreate) -> Message:
         """Create a message of bancobot, answering a previous message."""
@@ -38,7 +77,7 @@ class BancoBotService:
             start = dt.datetime.now()
             # LLM call
             answer = self.agent.process_message(
-                message.session_id,
+                str(message.session_id),
                 HumanMessage(message.content, timing_metadata=props.timing_metadata),
             )
             answer_delta = dt.datetime.now() - start
@@ -67,46 +106,11 @@ class BancoBotService:
         except Exception as e:
             raise e
 
-    async def get_message_by_session(self, id: UUID4) -> Sequence[Message]:
-        """Get all messages for a specific session, orderer by time of creation, older first."""
-        try:
-            return self.storage.exec(
-                select(Message)
-                .order_by(col(Message.created_at))
-                .where(Message.session_id == id)
-            ).all()
-        except Exception as e:
-            raise e
-
-    async def get_all_sessions(self) -> Sequence[UUID4]:
-        """Get all unique session IDs."""
-        try:
-            return self.storage.exec(
-                select(Message.session_id).distinct().order_by(col(Message.created_at))
-            ).all()
-        except Exception as e:
-            raise e
-
-    async def delete_messages_by_session(self, id: UUID4) -> int:
-        """Delete all messages for a specific session. Returns count of deleted messages."""
-        try:
-            messages = await self.get_message_by_session(id)
-            for message in messages:
-                if message.id is not None:
-                    await self.delete_message_by_id(message.id)
-            return len(messages)
-        except Exception as e:
-            raise e
-
-    async def get_message_by_id(self, message_id: int) -> Message:
+    async def get_messages_by_session(self, session_id: int) -> Sequence[Message]:
         """Get a specific message by its ID."""
-        try:
-            message = self.storage.get(Message, message_id)
-            if message is None:
-                raise ValueError(f"Message with ID {message_id} not found")
-            return message
-        except Exception as e:
-            raise e
+        return self.storage.exec(
+            select(Message).where(Message.session_id == session_id)
+        ).all()
 
     async def delete_message_by_id(self, message_id: int) -> bool:
         """Delete a specific message by its ID."""
@@ -115,14 +119,6 @@ class BancoBotService:
             self.storage.delete(msg)
             self.storage.commit()
             return self.storage.get(Message, message_id) is None
-        except Exception as e:
-            raise e
-
-    async def get_messages(self) -> Sequence[Message]:
-        """Fetches all messages from the chatbot."""
-        try:
-            messages = self.storage.exec(select(Message)).all()
-            return messages
         except Exception as e:
             raise e
 
@@ -147,7 +143,7 @@ class BancoBotService:
             self.msg_stream, "real", {"payload": msg.model_dump_json()}
         )
 
-    async def subscribe_and_yield(self, request, start_from="$"):
+    async def subscribe_and_yield(self, request):
         """Subscribe for new messages through Redis and Yield New Messages.
         Takes a Request and checks if the connection still exists, or else stop
         listening.

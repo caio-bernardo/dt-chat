@@ -1,10 +1,8 @@
 import datetime as dt
 import enum
-import uuid
-from typing import Optional
+from typing import Dict, Optional
 
-from pydantic import UUID4
-from sqlmodel import Column, Enum, Field, Relationship, SQLModel
+from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
 
 
 class TimingMetadata(SQLModel, table=True):
@@ -27,9 +25,24 @@ class MessageType(str, enum.Enum):
     Human = "human"  # Aksually... it may not be a human but represents a client
 
 
+class Session(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    # Holds persona information
+    # TODO: may replace by a user profile
+    meta: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+
+    created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+    # Used only by the fork_engine
+    parent_conversation_id: int | None = Field(default=None, foreign_key="session.id")
+    parent_conversation: Optional["Session"] = Relationship()
+
+
 class Message(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    session_id: UUID4 = Field(default_factory=uuid.uuid4)
+    session_id: int = Field(foreign_key="session.id", ondelete="CASCADE")
+    session: Session = Relationship(back_populates="messages")
+
     content: str
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
@@ -42,17 +55,23 @@ class Message(SQLModel, table=True):
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
 
 
-class MessagePublic(SQLModel):
-    id: int
-    session_id: UUID4
-    content: str
-    type: MessageType
-    timing_metadata: Optional[TimingMetadataCreatePublic]
-    created_at: dt.datetime
+class SessionWithMessages(Session, table=False):
+    messages: list["Message"] = Relationship(
+        back_populates="session", cascade_delete=True
+    )
+
+
+class SessionCreate(SQLModel):
+    """Props to create a Session"""
+
+    meta: Dict
+    parent_conversation_id: int | None = None
 
 
 class MessageCreate(SQLModel):
-    session_id: Optional[UUID4] = None
+    """Props to create a Message"""
+
+    session_id: int
     content: str
     type: MessageType = Field(default=MessageType.Human)
     timing_metadata: Optional[TimingMetadataCreatePublic] = None
