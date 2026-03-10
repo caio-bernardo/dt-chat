@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.12"
 
 dependencies = [
-    "aioredis>=2.0.1",
     "chatbot",
     "fastapi[all]>=0.123.9",
     "langchain>=1.1.0",
@@ -21,6 +20,7 @@ dependencies = [
     "redis>=7.1.0",
     "sqlmodel>=0.0.27",
     "sse-starlette>=3.2.0",
+    "timesim",
 ]
 
 [dependency-groups]
@@ -47,3 +47,4 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 chatbot = { workspace = true }
+timesim = { workspace = true }

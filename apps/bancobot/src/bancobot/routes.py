@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette import EventSourceResponse
 
 from .dependecies import get_bbchat_service
-from .models import Message, MessageCreate, Session, SessionCreate, SessionWithMessages
+from .models import (
+    ConversationCreate,
+    ConversationPublic,
+    ConversationPublicWithMessages,
+    MessageCreate,
+    MessagePublic,
+)
 from .services import BancoBotService
 
 ### Routes
@@ -25,16 +31,16 @@ async def health():
     return {"detail": "API is on air."}
 
 
-@router.post("/sessions", response_model=SessionWithMessages)
+@router.post("/sessions", response_model=ConversationPublic, status_code=201)
 async def create_session(
-    props: SessionCreate,
+    props: ConversationCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
     """Create a new session. Possibly from a parent session to fork a dialogue"""
-    return 201, await service.create_session(props)
+    return await service.create_session(props)
 
 
-@router.get("/sessions", response_model=Sequence[Session])
+@router.get("/sessions", response_model=Sequence[ConversationPublic])
 async def get_sessions(
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
@@ -42,7 +48,7 @@ async def get_sessions(
     return await service.get_all_sessions()
 
 
-@router.get("/sessions/{id}", response_model=SessionWithMessages)
+@router.get("/sessions/{id}", response_model=ConversationPublicWithMessages)
 async def fetch_session(
     id: int, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
 ):
@@ -50,16 +56,16 @@ async def fetch_session(
     return await service.fetch_session(id)
 
 
-@router.delete("/sessions/{id}", response_model=None)
+@router.delete("/sessions/{id}", response_model=None, status_code=204)
 async def delete_session(
     id: int,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
     """Delete a session by its id"""
-    return 204, await service.delete_session(id)
+    return await service.delete_session(id)
 
 
-@router.post("/messages", response_model=Message, status_code=201)
+@router.post("/messages", response_model=MessagePublic, status_code=201)
 async def create_message(
     props: MessageCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
@@ -71,13 +77,13 @@ async def create_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/sessions/{id}/messages", response_model=Sequence[Message])
+@router.get("/sessions/{id}/messages", response_model=Sequence[MessagePublic])
 async def fetch_messages(
     id: int,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
     """Fetches all messages from the chatbot."""
-    return await service.get_messages_by_session(id)
+    return await service.get_messages_by_conversation(id)
 
 
 @router.get("/sessions/messages/stream")

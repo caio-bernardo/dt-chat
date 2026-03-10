@@ -7,7 +7,7 @@
 #     "python-dotenv>=1.2.1",
 #     "requests>=2.32.5",
 #     "typer>=0.21.1",
-#     "userbot"
+#     "userbot",
 # ]
 #
 # [tool.uv.sources]
@@ -39,14 +39,20 @@ import os
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict
 
 import requests
 import typer
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
 
-from userbot import AIMessage, HumanMessage, TimeSimulationConfig, UserBot
+from userbot import (
+    AIMessage,
+    HumanMessage,
+    IMessageSender,
+    TimeSimulationConfig,
+    UserBot,
+)
 
 
 @dataclass
@@ -56,6 +62,35 @@ class Persona:
     typing_speed: float
     thinking_range: tuple[int, int]
     temporal_offset: dt.timedelta
+
+
+class BancoBotSender(IMessageSender):
+    def __init__(self, api_url: str):
+        self.session_id: int | None = None
+        self.api_url = api_url
+
+    def create_channel(self, data: Dict | None = None):
+        payload = {"meta": data or {}}
+
+        response = requests.post(f"{self.api_url}/sessions", json=payload)
+        response.raise_for_status()
+        self.session_id = response.json()["id"]
+
+    def send_message(self, msg: HumanMessage) -> AIMessage:
+        assert self.session_id, (
+            "Error: no channel created. Do you remembered to call `create_channel` before this fuction?"
+        )
+        assert msg.timing_metadata, "Error: no timing_metadata in HumanMessage."  # pyright: ignore[reportAttributeAccessIssue]
+
+        payload = {
+            "conversation_id": self.session_id,
+            "content": str(msg.content),
+            "timing_metadata": msg.timing_metadata,  # pyright: ignore[reportAttributeAccessIssue]
+        }
+
+        response = requests.post(f"{self.api_url}/messages", json=payload)
+        response.raise_for_status()
+        return AIMessage(content=response.json()["content"])
 
 
 LLM_MODEL = "gpt-4.1"
@@ -149,29 +184,6 @@ def parse_to_persona(id: str, data: dict[str, str]) -> Persona:
     )
 
 
-def query_bancobot(
-    api_url: str, session: dict[str, Optional[str]], query: HumanMessage
-) -> AIMessage:
-    """Executa uma query para a API BancoBot."""
-
-    assert query.timing_metadata, "Error: no timing_metadata in HumanMessage."
-
-    payload = {
-        "content": str(query.content),
-        "timing_metadata": query.timing_metadata,
-    }
-
-    if session.get("id") is not None:
-        payload["session_id"] = session["id"]
-
-    response = requests.post(f"{api_url}/messages", json=payload)
-
-    if session.get("id") is None:
-        session["id"] = response.json()["session_id"]
-    response.raise_for_status()
-    return AIMessage(content=response.json()["content"])
-
-
 def init_user(
     persona_id: int,
     prompt: str,
@@ -184,27 +196,33 @@ def init_user(
     simulate_delays: bool,
 ):
     """Inicia a simulação de um UserBot."""
-    session: dict[str, Optional[str]] = {"id": None}
-
     user = UserBot(
         prompt,
         LLM_MODEL,
-        lambda query: query_bancobot(api_url, session, query),
+        BancoBotSender(api_url),
+        [],
         InMemorySaver(),
     )
-    user.run(
-        "Olá, cliente do Banco X.",
-        timesim_config=TimeSimulationConfig(
-            temporal_offset=temporal_offset,
-            typing_speed_wpm=typing_speed,
-            thinking_time_range=thinking_range,
-            pause_probability=pause_probability,
-            pause_time_range=pause_time_range,
-            simulate_delays=simulate_delays,
-        ),
-    )
-
-    print(f"User {persona_id} finished.")
+    try:
+        user.run(
+            "Olá, cliente do Banco X.",
+            timesim_config=TimeSimulationConfig(
+                temporal_offset=temporal_offset,
+                typing_speed_wpm=typing_speed,
+                thinking_time_range=thinking_range,
+                pause_probability=pause_probability,
+                pause_time_range=pause_time_range,
+                simulate_delays=simulate_delays,
+            ),
+        )
+    except requests.HTTPError as e:
+        print(
+            f"[{dt.datetime.now()}] ERROR: HTTP error occurred. Detail: {e.response.content}"
+        )
+    except Exception as e:
+        print(f"[{dt.datetime.now()}] ERROR: User run failed. Detail: {e}")
+    else:
+        print(f"[{dt.datetime.now()}] INFO: User {persona_id} finished.")
 
 
 def main(

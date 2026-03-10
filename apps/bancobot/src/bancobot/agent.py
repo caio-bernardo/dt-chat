@@ -28,7 +28,7 @@ class BancoAgent(ChatBotBase):
         prompt_eng: SystemMessage | str = BANCO_BOT_SYSTEM_PROMPT,
         saver: Checkpointer = None,
     ):
-        super().__init__(model, prompt_eng, toolkit, saver)
+        super().__init__(model, prompt_eng, [], toolkit, saver)
 
 
 def make_search_documentation_tool(vector_store: VectorStore) -> BaseTool:

@@ -3,75 +3,102 @@ import enum
 from typing import Dict, Optional
 
 from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
+from timesim import TimingMetadata
 
 
-class TimingMetadata(SQLModel, table=True):
+class ConversationBase(SQLModel):
+    # Holds info about the persona and timesimulation config
+    meta: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+
+    # Used only by the fork_engine
+    parent_conversation_id: int | None = Field(
+        default=None, foreign_key="conversation.id", nullable=True
+    )
+
+
+class Conversation(ConversationBase, table=True):
+    """Table for a Conversation."""
+
     id: int | None = Field(default=None, primary_key=True)
-    simulated_timestamp: dt.datetime
-    typing_time: float
-    pause_time: float
-    thinking_time: float
+    created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+
+    parent_conversation: Optional["Conversation"] = Relationship(
+        back_populates="children_conversations",
+        sa_relationship_kwargs={"remote_side": "Conversation.id"},
+    )
+    children_conversations: list["Conversation"] = Relationship(
+        back_populates="parent_conversation"
+    )
+    messages: list["Message"] = Relationship(
+        back_populates="conversation", cascade_delete=True
+    )
 
 
-class TimingMetadataCreatePublic(SQLModel):
-    simulated_timestamp: dt.datetime
-    typing_time: float
-    pause_time: float
-    thinking_time: float
+class ConversationPublic(ConversationBase):
+    """Public view of a Conversation"""
+
+    id: int
+    parent_conversation: Optional["ConversationPublic"] = None
+    children_conversations: list["ConversationPublic"]
+    created_at: dt.datetime
+
+
+class ConversationPublicWithMessages(ConversationPublic):
+    """Public view of a Conversation with list of messages"""
+
+    messages: list["MessagePublicWithoutConversation"]
+
+
+class ConversationCreate(ConversationBase):
+    """Props to create a Session"""
+
+    pass
 
 
 class MessageType(str, enum.Enum):
+    """Type of messages. Either AI (Server) generated or Human (Cliente) Generated"""
+
     AI = "ai"
     Human = "human"  # Aksually... it may not be a human but represents a client
 
 
-class Session(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+class MessageBase(SQLModel):
+    """Base for Message. Holds a conversation, content, type and metadata"""
 
-    # Holds persona information
-    # TODO: may replace by a user profile
-    meta: Dict = Field(default_factory=dict, sa_column=Column(JSON))
-
-    created_at: dt.datetime = Field(default_factory=dt.datetime.now)
-    # Used only by the fork_engine
-    parent_conversation_id: int | None = Field(default=None, foreign_key="session.id")
-    parent_conversation: Optional["Session"] = Relationship()
-
-
-class Message(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="session.id", ondelete="CASCADE")
-    session: Session = Relationship(back_populates="messages")
-
+    conversation_id: int = Field(foreign_key="conversation.id", ondelete="CASCADE")
     content: str
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
     )
-
-    timing_metadata_id: Optional[int] = Field(
-        default=None, foreign_key="timingmetadata.id"
+    timing_metadata: TimingMetadata = Field(
+        default_factory=dict, sa_column=Column(JSON)
     )
-    timing_metadata: Optional[TimingMetadata] = Relationship()
+
+
+class Message(MessageBase, table=True):
+    """Message table on the database"""
+
+    id: int | None = Field(default=None, primary_key=True)
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+    conversation: Conversation = Relationship(back_populates="messages")
 
 
-class SessionWithMessages(Session, table=False):
-    messages: list["Message"] = Relationship(
-        back_populates="session", cascade_delete=True
-    )
+class MessagePublic(MessageBase):
+    """Public view of a Message"""
+
+    id: int
+    conversation: ConversationPublic
+    created_at: dt.datetime
 
 
-class SessionCreate(SQLModel):
-    """Props to create a Session"""
+class MessagePublicWithoutConversation(MessageBase):
+    """Public Message Without Conversation data"""
 
-    meta: Dict
-    parent_conversation_id: int | None = None
+    created_at: dt.datetime
+    id: int
 
 
-class MessageCreate(SQLModel):
+class MessageCreate(MessageBase):
     """Props to create a Message"""
 
-    session_id: int
-    content: str
-    type: MessageType = Field(default=MessageType.Human)
-    timing_metadata: Optional[TimingMetadataCreatePublic] = None
+    pass

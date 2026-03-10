@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime
 from typing import Any, Optional
 
 from bancobot.models import Message, MessageType
@@ -86,20 +87,27 @@ async def arun(config: ClassifierConfig):
 
     while True:
         try:
-            data: dict[str, Any] = await classifier.read_stream(config.stream_name)
-            message = Message.model_validate(data["payload"])
+            data = await classifier.read_stream(config.stream_name)
+            print(data)
+            message = Message.model_validate_json(data[0][1][1]["payload"])
 
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
+
+            print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
+
             if config.stream:
                 await classifier.publish(tp)
 
         except KeyboardInterrupt:
-            print("INFO: User interrupted the process. Finish now.")
+            print(
+                f"[{datetime.now()}] INFO: User interrupted the process. Finishing now."
+            )
             break
         except Exception as e:
-            print(f"ERROR: Failure on {e}")
+            print(f"[{datetime.now()}] ERROR: Failure on {e}")
+            raise e
 
 
 @app.command()
@@ -108,7 +116,7 @@ def run(
     human_touchpoints_file_path: str,
     stream_name: str = "msg_chan",
     stream: bool = False,
-    db_path: str = "sqlite:///db.sqlite3",
+    db_path: str = "sqlite:///touchpoints.db",
     model: str = "gpt-3.5-turbo",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them

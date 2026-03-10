@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any
 
@@ -28,4 +29,5 @@ class RedisStorage(IStorage):
         return await self.redis.xread({source: "0"}, count=1, block=100)
 
     async def asend(self, dst: str, origin: str, value: Any):
-        await self.redis.xadd(dst, {"origin": origin, "payload": value})
+        # WARN: need to serialize payload since redis only accepts primitive types (int, str, float)
+        await self.redis.xadd(dst, {"origin": origin, "payload": json.dumps(value)})

@@ -1,3 +1,4 @@
+import datetime as dt
 from typing import Any
 
 import redis.asyncio as redis
@@ -19,8 +20,10 @@ class ClassifierService:
     ) -> dict[str, Any]:
         """Reads from a Redis stream starting from:
         0 - oldest message
-        $ - new messages since now"""
-        return await self.redis.xread({stream: start_from}, count=1, block=1000)
+        $ - new messages since now
+        Blocks execution waiting for new messages
+        """
+        return await self.redis.xread({stream: start_from}, count=1, block=0)
 
     def _get_last_internal_id(self, case_id: int) -> int:
         """Returns the last used internal id from a case (equivalent for the number of messages in the case/conversation/session)"""
@@ -33,13 +36,13 @@ class ClassifierService:
     async def create_touchpoint(
         self, msg: Message, actor: str, tp_list: list[str]
     ) -> Touchpoint:
-        last_internal_id = self._get_last_internal_id(msg.session_id)
+        last_internal_id = self._get_last_internal_id(msg.conversation_id)
 
         touchpoint = await self.agent.classify(msg.content, actor, tp_list)
 
-        case_id = msg.session_id
+        case_id = msg.conversation_id
         timestamp = (
-            msg.timing_metadata.simulated_timestamp
+            dt.datetime.fromtimestamp(msg.timing_metadata["simulated_timestamp"])
             if msg.timing_metadata
             else msg.created_at
         )

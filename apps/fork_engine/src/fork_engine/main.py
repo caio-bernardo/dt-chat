@@ -9,7 +9,6 @@ from fork_engine.helpers import load_history, map_internal_2_langchain_message
 
 
 def on_reclamacao(data: StreamData) -> ForkConfig | None:
-
     # condition
     if data["payload"].activity == "REJEIÇÃO DA SOLUÇÃO":
         session = uuid.uuid4()
@@ -23,7 +22,7 @@ def on_reclamacao(data: StreamData) -> ForkConfig | None:
         )
 
         userbuilder = UserBotBuilder()
-        userbuilder.sender = lambda msg: bancobot.process_message(session, msg)
+        userbuilder.sender = lambda msg: bancobot.process_message(str(session), msg)
         userbuilder.initial_messages = list(
             map(map_internal_2_langchain_message, conversation)
         )

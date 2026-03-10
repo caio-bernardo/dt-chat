@@ -25,6 +25,6 @@ dev = [
 ]
 
 [tool.taskipy.tasks]
-run_bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
+bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
 visualizer = "uv run --package visualizer streamlit run apps/visualizer/src/visualizer"
-classifier = "uv run --package classifier classifier"
+classifier = "uv run --package classifier classifier run data/touchpoints/Touchpoint_ai.json data/touchpoints/Touchpoint_human.json"
