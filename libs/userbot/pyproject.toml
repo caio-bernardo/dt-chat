@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "chatbot",
+    "timesim",
 ]
 
 [project.scripts]
@@ -20,3 +21,4 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 chatbot = { workspace = true }
+timesim = { workspace = true }

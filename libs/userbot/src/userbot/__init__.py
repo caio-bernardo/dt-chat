@@ -1,11 +1,12 @@
 from langchain_core.messages import AIMessage, HumanMessage
+from timesim import TimeSimulationConfig, TimingMetadata
 
-from .timing_config import TimeSimulationConfig
 from .user import IMessageSender, UserBot
 
 __all__ = [
     "UserBot",
     "TimeSimulationConfig",
+    "TimingMetadata",
     "HumanMessage",
     "AIMessage",
     "IMessageSender",

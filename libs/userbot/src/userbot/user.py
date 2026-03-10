@@ -8,8 +8,7 @@ from chatbot import BaseChatModel, ChatBotBase, Checkpointer
 from langchain_core.messages import AnyMessage
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
-
-from .timing_config import TimeSimulationConfig
+from timesim import TimeSimulationConfig, TimingMetadata
 
 
 class IMessageSender(ABC):
@@ -91,12 +90,13 @@ class UserBot(ChatBotBase):
                 time.sleep(typing_time.seconds)
             simulated_timestamp += typing_time
 
-            timing_metadata = {
-                "simulated_timestamp": simulated_timestamp.isoformat(),
+            timing_metadata: TimingMetadata = {
+                "simulated_timestamp": simulated_timestamp.timestamp(),
                 "typing_time": typing_time.total_seconds(),
                 "thinking_time": thinking_time.total_seconds(),
                 "pause_time": pause_time.total_seconds(),
             }
+
             ##### FIM da Simulação de Tempo ####
 
             query = str(
