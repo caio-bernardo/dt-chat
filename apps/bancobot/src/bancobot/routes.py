@@ -30,6 +30,7 @@ async def create_session(
     props: SessionCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
+    """Create a new session. Possibly from a parent session to fork a dialogue"""
     return 201, await service.create_session(props)
 
 
@@ -37,6 +38,7 @@ async def create_session(
 async def get_sessions(
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
+    """Retrieve all sessions entries."""
     return await service.get_all_sessions()
 
 
@@ -62,7 +64,7 @@ async def create_message(
     props: MessageCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
-    """Creates a new message to the chatbot. Receives an optional session id to continue a previous session dialogue."""
+    """Creates a new message to the chatbot. Receives session id to continue a previous session dialogue."""
     try:
         return await service.create_message(props)
     except Exception as e:
