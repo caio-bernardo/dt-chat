@@ -8,6 +8,8 @@ from classifier.models import Touchpoint
 
 
 class TouchpointExporter:
+    """Exporter class for Touchpoints"""
+
     def __init__(self, storage: Session) -> None:
         self.storage = storage
 
@@ -22,7 +24,14 @@ class TouchpointExporter:
         output = StringIO()
 
         writer = csv.writer(output)
-        headers = "event_id,case_id,internal_id,actor,activity,timestamp"
+        headers = [
+            "event_id",
+            "case_id",
+            "internal_id",
+            "actor",
+            "activity",
+            "timestamp",
+        ]
         writer.writerow(headers)
 
         tps = self.storage.exec(
@@ -40,19 +49,40 @@ class TouchpointExporter:
         for session_id, messages in grouped_messages.items():
             # Start touchpoint
             writer.writerow(
-                f"{i},{session_id},-1,System,START-DIALOGUE-SYSTEM,{messages[0].timestamp.isoformat()}"
+                [
+                    i,
+                    session_id,
+                    -1,
+                    "System",
+                    "START-DIALOGUE-SYSTEM",
+                    messages[0].timestamp.isoformat(),
+                ]
             )
             i += 1
 
             for internal_id, msg in enumerate(messages):
                 writer.writerow(
-                    f"{i},{session_id},{internal_id},{msg.actor},{msg.activity},{msg.timestamp.isoformat()}"
+                    [
+                        i,
+                        session_id,
+                        internal_id,
+                        msg.actor,
+                        msg.activity,
+                        msg.timestamp.isoformat(),
+                    ]
                 )
                 i += 1
 
             # End touchpoint
             writer.writerow(
-                f"{i},{session_id},99999,System,END-DIALOGUE-SYSTEM,{messages[-1].timestamp.isoformat()}"
+                [
+                    i,
+                    session_id,
+                    99999,
+                    "System",
+                    "END - DIALOGUE - SYSTEM",
+                    messages[-1].timestamp.isoformat(),
+                ]
             )
             i += 1
         return output
