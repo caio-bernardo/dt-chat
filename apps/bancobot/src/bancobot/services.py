@@ -108,6 +108,8 @@ class BancoBotService:
                 timing_metadata=answer_metadata,
             )
 
+            print(f"INFO: {payload}")
+
             return await self.save_and_publish_message(payload, answer_metadata)
         except Exception as e:
             raise e
@@ -148,6 +150,7 @@ class BancoBotService:
 
         await self.redis.asend(self.msg_stream, "real", msg.model_dump_json())
 
+    # WARN: currently unnused
     async def subscribe_and_yield(self, request):
         """Subscribe for new messages through Redis and Yield New Messages.
         Takes a Request and checks if the connection still exists, or else stop
@@ -178,7 +181,7 @@ class BancoBotService:
         message = Message(
             conversation_id=props.conversation_id,
             content=props.content,
-            type=MessageType.Human,
+            type=props.type,
             timing_metadata=timing_metadata,
         )
         self.storage.add(message)
