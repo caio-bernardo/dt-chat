@@ -1,7 +1,7 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from bancobot.models import Message, MessageType
 from dotenv import load_dotenv
@@ -12,7 +12,7 @@ from typer import Typer
 from classifier.agent import ClassifierAgent
 from classifier.database import create_db_and_tables, get_session
 from classifier.exporter import TouchpointExporter
-from classifier.service import ClassifierService
+from classifier.services import ClassifierService, StreamService
 
 load_dotenv()
 
@@ -71,9 +71,15 @@ class ClassifierConfig(BaseModel):
 
 async def arun(config: ClassifierConfig):
     agent = get_agent(config.llm_model, config.llm_temperature or 0)
-    storage = next(get_session(config.db_saver))
+    engine = create_db_and_tables(config.db_saver)
+    storage = next(get_session(engine))
     redis = get_redis()
-    classifier = ClassifierService(agent, storage, redis)
+    classifier = ClassifierService(agent, storage)
+    stream = StreamService(redis, "msg_chan")
+
+    # Part of the initialization. Need to filter already processed messages, and
+    # since its a async function it cannot be called on the __init__.
+    await stream._create_group()
 
     cases = {
         MessageType.AI: {"actor": "Bot", "tp_list": config.ai_touchpoint_list},
@@ -87,18 +93,18 @@ async def arun(config: ClassifierConfig):
 
     while True:
         try:
-            data = await classifier.read_stream(config.stream_name)
-            print(data)
-            message = Message.model_validate_json(data[0][1][1]["payload"])
+            id, data = await stream.subscribe()
+            message = Message.model_validate(data)
 
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
+            await stream.acknowledge(id)
 
             print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
 
             if config.stream:
-                await classifier.publish(tp)
+                await stream.publish("tp_chan", tp.model_dump())
 
         except KeyboardInterrupt:
             print(
@@ -117,7 +123,7 @@ def run(
     stream_name: str = "msg_chan",
     stream: bool = False,
     db_path: str = "sqlite:///touchpoints.db",
-    model: str = "gpt-3.5-turbo",
+    model: str = "gpt-4.1",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).
