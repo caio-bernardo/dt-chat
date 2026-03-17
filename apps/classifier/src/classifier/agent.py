@@ -2,11 +2,14 @@ from langchain.chat_models import init_chat_model
 
 
 class ClassifierAgent:
+    """Agent Model to Classify touchpoints"""
+
     def __init__(self, model: str, temperature: float = 0.0):
         # Create agent with restrict token usage
         self.agent = init_chat_model(model, max_tokens=100, temperature=temperature)
 
     def _build_prompt(self, content: str, actor: str, categories: list[str]) -> str:
+        """Returns the prompt for the agent with injections"""
         return f"""\
                 Analise a seguinte mensagem de um {actor.lower()} em um chatbot bancário e identifique
                 o TOUCHPOINT correspondente usando EXCLUSIVAMENTE os touchpoints listados abaixo.
@@ -26,7 +29,7 @@ class ClassifierAgent:
                 TOUCHPOINT:"""
 
     async def classify(self, msg: str, actor: str, categories: list[str]) -> str:
-        """Classify a message from actor within a category. Returns the selected category."""
+        """Classify a message from an actor within a category. Returns the selected category."""
         prompt = self._build_prompt(msg, actor, categories)
         response = await self.agent.ainvoke(prompt)
         category = str(response.content).strip().strip("'").strip('"').upper()
