@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Optional
 
 from bancobot.models import Message, MessageType
+from bancobot.services import QueueMessage
 from dotenv import load_dotenv
+from pubsub.redis import RedisQueueConsumer
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from typer import Typer
@@ -12,7 +14,7 @@ from typer import Typer
 from classifier.agent import ClassifierAgent
 from classifier.database import create_db_and_tables, get_session
 from classifier.exporter import TouchpointExporter
-from classifier.services import ClassifierService, StreamService
+from classifier.services import ClassifierService
 
 load_dotenv()
 
@@ -75,11 +77,7 @@ async def arun(config: ClassifierConfig):
     storage = next(get_session(engine))
     redis = get_redis()
     classifier = ClassifierService(agent, storage)
-    stream = StreamService(redis, "msg_chan")
-
-    # Part of the initialization. Need to filter already processed messages, and
-    # since its a async function it cannot be called on the __init__.
-    await stream._create_group()
+    consumer = RedisQueueConsumer(redis)
 
     cases = {
         MessageType.AI: {"actor": "Bot", "tp_list": config.ai_touchpoint_list},
@@ -93,18 +91,19 @@ async def arun(config: ClassifierConfig):
 
     while True:
         try:
-            id, data = await stream.subscribe()
-            message = Message.model_validate(data)
+            data_str = await consumer.subscribe(config.stream_name)
+            data: QueueMessage = json.loads(data_str)
+
+            message = Message.model_validate(data["content"])
 
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
-            await stream.acknowledge(id)
 
             print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
 
-            if config.stream:
-                await stream.publish("tp_chan", tp.model_dump())
+            # if config.stream:
+            #     await consumer.publish("tp_chan", tp.model_dump())
 
         except KeyboardInterrupt:
             print(
@@ -113,14 +112,14 @@ async def arun(config: ClassifierConfig):
             break
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Failure on {e}")
-            raise e
+            break
 
 
 @app.command()
 def run(
     ai_touchpoints_file_path: str,
     human_touchpoints_file_path: str,
-    stream_name: str = "msg_chan",
+    stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = "sqlite:///touchpoints.db",
     model: str = "gpt-4.1",

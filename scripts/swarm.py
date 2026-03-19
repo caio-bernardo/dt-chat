@@ -45,7 +45,6 @@ import requests
 import typer
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
-
 from userbot import (
     AIMessage,
     HumanMessage,
@@ -273,7 +272,7 @@ def main(
         print(f"Error: Problem parsing personas: {e}")
         exit(1)
 
-    print("INFO: Init simulation")
+    print("Initialized Simulation")
     if sequential:
         for persona in personas:
             init_user(
@@ -308,7 +307,7 @@ def main(
             for _ in as_completed(futures):
                 pass
 
-    print("INFO: simulation complete.")
+    print("Simulation completed")
 
 
 if __name__ == "__main__":

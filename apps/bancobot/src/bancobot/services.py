@@ -1,8 +1,10 @@
 import datetime as dt
-from typing import Any, Sequence
+import json
+from typing import Dict, Sequence, TypedDict
 
 from chatbot import HumanMessage
 from fastapi import HTTPException
+from pubsub import IPublisher
 from sqlmodel import Session as DBSession
 from sqlmodel import col, desc, select
 
@@ -17,10 +19,9 @@ from .models import (
 )
 
 
-class IStorage:
-    async def arcv(self, source: str) -> Any: ...
-
-    async def asend(self, dst: str, origin: str, value: Any): ...
+class QueueMessage(TypedDict):
+    origin: str
+    content: Dict
 
 
 def create_simulated_timestamp_or_default(
@@ -45,11 +46,13 @@ def create_simulated_timestamp_or_default(
 class BancoBotService:
     """BancoBot' service to create a new agent with special prompt engeneering."""
 
-    def __init__(self, agent: BancoAgent, storage: DBSession, r: IStorage):
+    def __init__(
+        self, agent: BancoAgent, storage: DBSession, producer_service: IPublisher
+    ):
         self.agent = agent
         self.storage = storage
-        self.redis = r
-        self.msg_stream = "msg_chan"
+        self.producer = producer_service
+        self.channel = "msg_channel"
 
     async def create_session(self, props: ConversationCreate) -> Conversation:
         """Create a session, holds messages and metadata of a conversation"""
@@ -147,29 +150,17 @@ class BancoBotService:
 
     async def publish(self, msg: Message):
         """Publish a Message to a internal channel as json string."""
-
-        await self.redis.asend(self.msg_stream, "real", msg.model_dump_json())
-
-    # WARN: currently unnused
-    async def subscribe_and_yield(self, request):
-        """Subscribe for new messages through Redis and Yield New Messages.
-        Takes a Request and checks if the connection still exists, or else stop
-        listening.
-
-        start_from="0": Read from the begginig of messages history
-        start_from"$": Read only new messages since now.
-        """
         try:
-            while True:
-                if await request.is_disconnected():
-                    break
-
-                msg = await self.redis.arcv(self.msg_stream)
-
-                if msg:
-                    yield {"data": msg["payload"]}
-        finally:
-            pass
+            # uses json mode to parse datetime into isoformat
+            payload: QueueMessage = {
+                "origin": "bancobot",
+                "content": msg.model_dump(mode="json"),
+            }
+            await self.producer.publish(self.channel, json.dumps(payload))
+        except Exception as e:
+            print(
+                f"[{dt.datetime.now()}] WARN: failed to publish message to queue. Detail: {str(e)}"
+            )
 
     def save_message(
         self,

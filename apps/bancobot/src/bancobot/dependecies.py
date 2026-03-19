@@ -6,11 +6,11 @@ from fastapi import Depends
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langgraph.checkpoint.memory import InMemorySaver
+from pubsub.redis import RedisQueueProducer
 from sqlmodel import Session
 
 import bancobot
 import bancobot.agent
-from bancobot.database import RedisStorage
 
 from .agent import BancoAgent
 from .services import BancoBotService
@@ -48,9 +48,11 @@ def get_banco_agent(saver: Annotated[Checkpointer, Depends(get_memory_saver)]):
     return BancoAgent(model="gpt-4.1", toolkit=[search_tool], saver=saver)
 
 
-def get_redis():
-    """Creates a Redis Connections"""
-    return RedisStorage()
+def get_redisproducer():
+    """Creates a Redis Queue Producer to IPC communication"""
+    from .database import redis_client
+
+    return RedisQueueProducer(redis_client)
 
 
 def get_session():
@@ -64,7 +66,7 @@ def get_session():
 def get_bbchat_service(
     storage: Annotated[Session, Depends(get_session)],
     agent: Annotated[BancoAgent, Depends(get_banco_agent)],
-    red_storage: Annotated[RedisStorage, Depends(get_redis)],
+    red_storage: Annotated[RedisQueueProducer, Depends(get_redisproducer)],
 ):
     """Returns Banco bot service class"""
-    return BancoBotService(agent=agent, storage=storage, r=red_storage)
+    return BancoBotService(agent=agent, storage=storage, producer_service=red_storage)

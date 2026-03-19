@@ -1,7 +1,6 @@
 from typing import Annotated, Sequence
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sse_starlette import EventSourceResponse
+from fastapi import APIRouter, Depends, HTTPException
 
 from .dependecies import get_bbchat_service
 from .models import (
@@ -84,17 +83,3 @@ async def fetch_messages(
 ):
     """Fetches all messages from the chatbot."""
     return await service.get_messages_by_conversation(id)
-
-
-@router.get("/sessions/messages/stream")
-async def stream(
-    request: Request, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
-):
-    """Stream new created messages on the system as Server Side Event."""
-    return EventSourceResponse(
-        service.subscribe_and_yield(request),
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
