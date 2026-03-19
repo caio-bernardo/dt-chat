@@ -1,6 +1,6 @@
 [project]
-name = "userbot"
-version = "0.1.1"
+name = "fork-engine"
+version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -8,17 +8,25 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "bancobot",
     "chatbot",
-    "timesim",
+    "classifier",
+    "langchain>=1.2.0",
+    "langchain-openai>=1.1.4",
+    "pydantic>=2.12.5",
+    "redis>=7.1.0",
+    "userbot",
 ]
 
 [project.scripts]
-userbot = "userbot:main"
+fork-engine = "fork_engine:main"
 
 [build-system]
 requires = ["uv_build>=0.9.18,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
+userbot = { workspace = true }
+bancobot = { workspace = true }
+classifier = { workspace = true }
 chatbot = { workspace = true }
-timesim = { workspace = true }

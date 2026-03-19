@@ -1,5 +1,6 @@
 import os
 
+import redis.asyncio as redis
 from dotenv import load_dotenv
 from sqlmodel import SQLModel, create_engine
 
@@ -8,6 +9,9 @@ from .models import *  # noqa: F403
 load_dotenv()
 
 engine = create_engine(os.environ["DB_URL"])
+
+# Redis connection
+redis_client = redis.Redis(host="localhost", port=6379)
 
 
 def create_db_and_tables():

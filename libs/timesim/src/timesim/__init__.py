@@ -1,11 +1,31 @@
+"""
+A Python module for handling timing metadata in simulations.
+
+This module provides the TimingMetadata class, a Pydantic model that encapsulates metadata associated with time simulations. It includes fields for simulated timestamps and various time intervals such as pause time, typing time, and thinking time.
+"""
+
 import datetime as dt
 import random
+from typing import TypedDict
 
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class TimeSimulationConfig:
+class TimingMetadata(TypedDict):
+    """Metadata associated with the time simulation.
+    - simulated_timestamp: float (UNIX timestamp, timestamp when user sends the message)
+    - pause_time: float (time the user paused to think about the answer in seconds)
+    - typing_time: float (time the user spend to type things in seconds)
+    - thinking_time: float (time the user spend thinking about the answer in seconds)
+    """
+
+    simulated_timestamp: float
+    pause_time: float
+    typing_time: float
+    thinking_time: float
+
+
+class TimeSimulationConfig(BaseModel):
     temporal_offset: dt.timedelta = dt.timedelta(seconds=0)
     typing_speed_wpm: float = 40.0
     thinking_time_range: tuple[int, int] = (2, 10)

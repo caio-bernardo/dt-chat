@@ -1,13 +1,25 @@
+from typing import Dict
+
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
-from src.userbot import UserBot
+
+from userbot.user import IMessageSender, UserBot
 
 session_id = None
 
 
-def send_to_mockbot(session_id, query: HumanMessage) -> AIMessage:
-    return AIMessage(content="Service out of air. Come again later!")
+class MockbotSender(IMessageSender):
+    def __init__(self) -> None:
+        self.foo = ""
+
+    def create_channel(self, data: Dict | None = None):
+        self.foo = "bar"
+
+    def send_message(self, msg: HumanMessage) -> AIMessage:
+        return AIMessage(
+            content=f"Serivece out of air. Come again later! foo: {self.foo}"
+        )
 
 
 PERSONA_MOCK = """Você é Alberto Vasconcelos, de 60 anos, residente em João Pessoa (PB). É presidente de uma incorporadora de imóveis de luxo, do segmento Clientes Private Bank. Siga as duas próximas seções: [[como agir]] e [[missão]].
@@ -20,10 +32,12 @@ Finalize com 'quit' assim que sentir que suas ordens não estão sendo seguidas 
 if __name__ == "__main__":
     load_dotenv()
 
+    sender = MockbotSender()
+
     user = UserBot(
         persona=PERSONA_MOCK,
         model="gpt-3.5-turbo",
-        send_to_bot=lambda query: send_to_mockbot(session_id, query),
+        send=sender,
         saver=InMemorySaver(),
     )
 

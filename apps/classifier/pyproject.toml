@@ -12,6 +12,7 @@ dependencies = [
     "langchain>=1.2.0",
     "langchain-core>=1.2.2",
     "langchain-openai>=1.1.4",
+    "pubsub",
     "redis>=7.1.0",
     "sqlmodel>=0.0.27",
     "typer>=0.19.2",
@@ -26,3 +27,4 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 bancobot = { workspace = true }
+pubsub = { workspace = true }

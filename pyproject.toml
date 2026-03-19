@@ -5,7 +5,7 @@ description = "Framework for building Digital Twins of conversational agents."
 requires-python = ">=3.12"
 readme = "README.md"
 authors = [
-    { "name" = "Caio Bernardo", "email" = "caio.2004vb@gmail.com"}
+    { "name" = "Caio Bernardo", "email" = "me@caiobernardo.top"}
 ]
 license = "MIT"
 dependencies = [
@@ -25,6 +25,7 @@ dev = [
 ]
 
 [tool.taskipy.tasks]
-run_bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
+bancobot = "uv run --package bancobot fastapi dev apps/bancobot"
 visualizer = "uv run --package visualizer streamlit run apps/visualizer/src/visualizer"
-classifier = "uv run --package classifier classifier"
+classifier = "uv run --package classifier classifier run data/touchpoints/Touchpoint_ai.json data/touchpoints/Touchpoint_human.json"
+classifier-cli = "uv run --package classifier classifier"

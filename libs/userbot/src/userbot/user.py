@@ -1,13 +1,24 @@
 import datetime as dt
 import time
 import uuid
-from typing import Callable
+from abc import ABC, abstractmethod
+from typing import Dict
 
 from chatbot import BaseChatModel, ChatBotBase, Checkpointer
+from langchain_core.messages import AnyMessage
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
+from timesim import TimeSimulationConfig, TimingMetadata
 
-from .timing_config import TimeSimulationConfig
+
+class IMessageSender(ABC):
+    """Interface to allow UserBot to open a channel and communicate."""
+
+    @abstractmethod
+    def create_channel(self, data: Dict | None = None): ...
+
+    @abstractmethod
+    def send_message(self, msg: HumanMessage) -> AIMessage: ...
 
 
 class UserBot(ChatBotBase):
@@ -21,11 +32,14 @@ class UserBot(ChatBotBase):
         self,
         persona: str,
         model: BaseChatModel | str,
-        send_to_bot: Callable[[HumanMessage], AIMessage],
+        send: IMessageSender,
+        initial_messages: list[AnyMessage] = [],
         saver: Checkpointer = None,
     ) -> None:
-        self.send_to_bot = send_to_bot
-        super().__init__(model, prompt_eng=persona, saver=saver)
+        self.send_to_bot = send
+        super().__init__(
+            model, prompt_eng=persona, initial_messages=initial_messages, saver=saver
+        )
 
     def run(
         self,
@@ -43,10 +57,14 @@ class UserBot(ChatBotBase):
         thread_id = uuid.uuid4()
         query = initial_msg
 
+        self.send_to_bot.create_channel()
+
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
 
         for _ in range(max_iterations):
-            response = str(self.process_message(thread_id, HumanMessage(query)).content)
+            response = str(
+                self.process_message(str(thread_id), HumanMessage(query)).content
+            )
 
             ##### Simulação de Tempo ####
             # Intervalo de Pausa
@@ -72,16 +90,17 @@ class UserBot(ChatBotBase):
                 time.sleep(typing_time.seconds)
             simulated_timestamp += typing_time
 
-            timing_metadata = {
-                "simulated_timestamp": simulated_timestamp.isoformat(),
+            timing_metadata: TimingMetadata = {
+                "simulated_timestamp": simulated_timestamp.timestamp(),
                 "typing_time": typing_time.total_seconds(),
                 "thinking_time": thinking_time.total_seconds(),
                 "pause_time": pause_time.total_seconds(),
             }
+
             ##### FIM da Simulação de Tempo ####
 
             query = str(
-                self.send_to_bot(
+                self.send_to_bot.send_message(
                     HumanMessage(response, timing_metadata=timing_metadata)
                 ).content
             )

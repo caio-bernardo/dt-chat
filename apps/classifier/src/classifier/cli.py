@@ -1,17 +1,20 @@
 import asyncio
 import json
-from typing import Any, Generator, Optional
+from datetime import datetime
+from typing import Optional
 
 from bancobot.models import Message, MessageType
+from bancobot.services import QueueMessage
 from dotenv import load_dotenv
+from pubsub.redis import RedisQueueConsumer
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from sqlmodel import Session, create_engine
 from typer import Typer
 
 from classifier.agent import ClassifierAgent
+from classifier.database import create_db_and_tables, get_session
 from classifier.exporter import TouchpointExporter
-from classifier.service import ClassifierService
+from classifier.services import ClassifierService
 
 load_dotenv()
 
@@ -20,13 +23,6 @@ app = Typer()
 
 def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
     return ClassifierAgent(model, temperature)
-
-
-def get_session(db: str) -> Generator[Session, Any, Any]:
-    engine = create_engine(db)
-
-    with Session(engine) as session:
-        yield session
 
 
 def get_redis() -> Redis:
@@ -41,7 +37,7 @@ def load_tp_list(path: str) -> list[str]:
 
 @app.command(name="export")
 def export_command(
-    file_output: str = "output.csv", db_path: str = "sqlite:///db.sqlite3"
+    file_output: str = "output.csv", db_path: str = "sqlite:///touchpoints.db"
 ):
     """Export touchpoints to a csv file, retrieve touchpoints from `db_path`.
 
@@ -53,7 +49,8 @@ def export_command(
     and 99999 respectively, they contain the timestamp of the first and last
     message in the conversation.
     """
-    session = next(get_session(db_path))
+    engine = create_db_and_tables(db_path)
+    session = next(get_session(engine))
     exporter = TouchpointExporter(storage=session)
 
     print("Exporting touchpoints")
@@ -76,9 +73,11 @@ class ClassifierConfig(BaseModel):
 
 async def arun(config: ClassifierConfig):
     agent = get_agent(config.llm_model, config.llm_temperature or 0)
-    storage = next(get_session(config.db_saver))
+    engine = create_db_and_tables(config.db_saver)
+    storage = next(get_session(engine))
     redis = get_redis()
-    classifier = ClassifierService(agent, storage, redis)
+    classifier = ClassifierService(agent, storage)
+    consumer = RedisQueueConsumer(redis)
 
     cases = {
         MessageType.AI: {"actor": "Bot", "tp_list": config.ai_touchpoint_list},
@@ -92,30 +91,38 @@ async def arun(config: ClassifierConfig):
 
     while True:
         try:
-            data: dict[str, Any] = await classifier.read_stream(config.stream_name)
-            message = Message.model_validate(data["payload"])
+            data_str = await consumer.subscribe(config.stream_name)
+            data: QueueMessage = json.loads(data_str)
+
+            message = Message.model_validate(data["content"])
 
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
-            if config.stream:
-                await classifier.publish(tp)
+
+            print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
+
+            # if config.stream:
+            #     await consumer.publish("tp_chan", tp.model_dump())
 
         except KeyboardInterrupt:
-            print("INFO: User interrupted the process. Finish now.")
+            print(
+                f"[{datetime.now()}] INFO: User interrupted the process. Finishing now."
+            )
             break
         except Exception as e:
-            print(f"ERROR: Failure on {e}")
+            print(f"[{datetime.now()}] ERROR: Failure on {e}")
+            break
 
 
 @app.command()
 def run(
     ai_touchpoints_file_path: str,
     human_touchpoints_file_path: str,
-    stream_name: str = "msg_chan",
+    stream_name: str = "msg_channel",
     stream: bool = False,
-    db_path: str = "sqlite:///db.sqlite3",
-    model: str = "gpt-3.5-turbo",
+    db_path: str = "sqlite:///touchpoints.db",
+    model: str = "gpt-4.1",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).
