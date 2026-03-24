@@ -216,12 +216,14 @@ def init_user(
         )
     except requests.HTTPError as e:
         print(
-            f"[{dt.datetime.now()}] ERROR: HTTP error occurred. Detail: {e.response.content}"
+            f"[{dt.datetime.now()}] ERROR (User {persona_id}):  HTTP error occurred. Detail: {e.response.content}"
         )
     except Exception as e:
-        print(f"[{dt.datetime.now()}] ERROR: User run failed. Detail: {e}")
+        print(
+            f"[{dt.datetime.now()}] ERROR (User {persona_id}): run failed. Detail: {e}"
+        )
     else:
-        print(f"[{dt.datetime.now()}] INFO: User {persona_id} finished.")
+        print(f"[{dt.datetime.now()}] INFO (User {persona_id}): finished.")
 
 
 def main(

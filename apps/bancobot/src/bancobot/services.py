@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import os
 from typing import Dict, Sequence, TypedDict
 
 from chatbot import HumanMessage
@@ -17,6 +18,8 @@ from .models import (
     MessageType,
     TimingMetadata,
 )
+
+MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
 
 
 class QueueMessage(TypedDict):
@@ -52,7 +55,7 @@ class BancoBotService:
         self.agent = agent
         self.storage = storage
         self.producer = producer_service
-        self.channel = "msg_channel"
+        self.channel = MSG_CHANNEL
 
     async def create_session(self, props: ConversationCreate) -> Conversation:
         """Create a session, holds messages and metadata of a conversation"""

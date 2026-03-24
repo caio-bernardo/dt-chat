@@ -13,6 +13,7 @@ dependencies = [
     "classifier",
     "langchain>=1.2.0",
     "langchain-openai>=1.1.4",
+    "pubsub",
     "pydantic>=2.12.5",
     "redis>=7.1.0",
     "userbot",
@@ -30,3 +31,4 @@ userbot = { workspace = true }
 bancobot = { workspace = true }
 classifier = { workspace = true }
 chatbot = { workspace = true }
+pubsub = { workspace = true }
