@@ -56,6 +56,7 @@ class BancoBotService:
         self.storage = storage
         self.producer = producer_service
         self.channel = MSG_CHANNEL
+        self.source = "real_bancobot"  # used to differentiate from bancobot server and forkengine server
 
     async def create_session(self, props: ConversationCreate) -> Conversation:
         """Create a session, holds messages and metadata of a conversation"""
@@ -92,29 +93,39 @@ class BancoBotService:
         self.storage.delete(session)
         self.storage.commit()
 
-    async def create_message(self, props: MessageCreate) -> Message:
-        """Create a message of bancobot, answering a previous message."""
+    def answer_message(
+        self, conversation_id: int, input: str, timing_metadata: TimingMetadata
+    ):
+        """Answer a messsage using bancobot agent. Generate its own timing metadata using the function arguments."""
+        start = dt.datetime.now()
+        # LLM call
+        answer = self.agent.process_message(
+            str(conversation_id),
+            HumanMessage(input, timing_metadata=timing_metadata),
+        )
+        answer_delta = dt.datetime.now() - start
+        answer_metadata = create_simulated_timestamp_or_default(
+            timing_metadata, answer_delta
+        )
+
+        return answer, answer_metadata
+
+    async def save_publish_answer_message(self, props: MessageCreate) -> Message:
+        """Save to storage and pulbish message, answer it using AI agent,
+        returning it. Also saves and publishes the answer"""
         try:
             message = await self.save_and_publish_message(props, props.timing_metadata)
 
-            start = dt.datetime.now()
-            # LLM call
-            answer = self.agent.process_message(
-                str(message.conversation_id),
-                HumanMessage(message.content, timing_metadata=props.timing_metadata),
+            answer, answer_metadata = self.answer_message(
+                message.conversation_id, message.content, message.timing_metadata
             )
-            answer_delta = dt.datetime.now() - start
-            answer_metadata = create_simulated_timestamp_or_default(
-                message.timing_metadata, answer_delta
-            )
+
             payload = MessageCreate(
                 conversation_id=message.conversation_id,
                 content=str(answer.content),
                 type=MessageType.AI,
                 timing_metadata=answer_metadata,
             )
-
-            print(f"INFO: {payload}")
 
             return await self.save_and_publish_message(payload, answer_metadata)
         except Exception as e:
@@ -156,7 +167,7 @@ class BancoBotService:
         try:
             # uses json mode to parse datetime into isoformat
             payload: QueueMessage = {
-                "origin": "bancobot",
+                "origin": self.source,
                 "content": msg.model_dump(mode="json"),
             }
             await self.producer.publish(self.channel, json.dumps(payload))
