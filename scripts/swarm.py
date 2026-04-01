@@ -45,6 +45,7 @@ import requests
 import typer
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
+
 from userbot import (
     AIMessage,
     HumanMessage,
@@ -199,8 +200,8 @@ def init_user(
         prompt,
         LLM_MODEL,
         BancoBotSender(api_url),
-        [],
-        InMemorySaver(),
+        initial_messages=[],
+        saver=InMemorySaver(),
     )
     try:
         user.run(
