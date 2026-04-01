@@ -1,8 +1,9 @@
+import asyncio
 import datetime as dt
 import time
 import uuid
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Optional, Sequence
 
 from chatbot import BaseChatModel, ChatBotBase, Checkpointer
 from langchain_core.messages import AnyMessage
@@ -21,6 +22,16 @@ class IMessageSender(ABC):
     def send_message(self, msg: HumanMessage) -> AIMessage: ...
 
 
+class IAsyncMessageSender(ABC):
+    """Asyncronous Interface to allow UserBot to open a channel and communicate."""
+
+    @abstractmethod
+    async def create_channel(self, data: Dict | None = None): ...
+
+    @abstractmethod
+    async def send_message(self, msg: HumanMessage) -> AIMessage: ...
+
+
 class UserBot(ChatBotBase):
     """Classe UserBot simula a interação entre um usuário e um chatbot.
     Utiliza um agente conversacional que assume a personalidade do usuário e
@@ -32,11 +43,13 @@ class UserBot(ChatBotBase):
         self,
         persona: str,
         model: BaseChatModel | str,
-        send: IMessageSender,
-        initial_messages: list[AnyMessage] = [],
+        send: Optional[IMessageSender] = None,
+        asend: Optional[IAsyncMessageSender] = None,
+        initial_messages: Sequence[AnyMessage] = [],
         saver: Checkpointer = None,
     ) -> None:
         self.send_to_bot = send
+        self.asend_to_bot = asend
         super().__init__(
             model, prompt_eng=persona, initial_messages=initial_messages, saver=saver
         )
@@ -47,17 +60,23 @@ class UserBot(ChatBotBase):
         max_iterations: int = 15,
         timesim_config: TimeSimulationConfig = TimeSimulationConfig(),
     ):
-        """Executa a simulação de interação entre um usuário e um chatbot.
+        """Executa a simulação de interação entre um usuário e um chatbot de modo síncrono.
 
         Args:
             initial_msg (str): Mensagem inicial do usuário.
             max_iterations (int, optional): Número máximo de interações. Padrão 15.
             timesim_config (TimeSimulationConfig, optional): Configurações de simulação de tempo. Padrão TimeSimulationConfig().
         """
+        assert self.send_to_bot is not None, (
+            "Expected a type that implements IMessageSender, since run is syncronous! See arun() for a async version of this function."
+        )
+
         thread_id = uuid.uuid4()
         query = initial_msg
 
-        self.send_to_bot.create_channel()
+        self.send_to_bot.create_channel(
+            {"persona": self.prompt_eng, "timesim": timesim_config.model_dump()}
+        )
 
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
 
@@ -104,6 +123,83 @@ class UserBot(ChatBotBase):
                     HumanMessage(response, timing_metadata=timing_metadata)
                 ).content
             )
+
+            if self.EXIT_SAFE_WORD in response.lower():
+                print("=" * 8, "USUÁRIO ENCERROU A CONVERSA", "=" * 8)
+                break
+
+            if self.EXIT_SAFE_WORD in query.lower():
+                print("=" * 8, "BANCO ENCERROU A CONVERSA", "=" * 8)
+                break
+
+    async def arun(
+        self,
+        initial_msg: str,
+        max_iterations: int = 15,
+        timesim_config: TimeSimulationConfig = TimeSimulationConfig(),
+    ):
+        """Executa a simulação de interação entre um usuário e um chatbot de modo assíncrono.
+
+        Args:
+            initial_msg (str): Mensagem inicial do usuário.
+            max_iterations (int, optional): Número máximo de interações. Padrão 15.
+            timesim_config (TimeSimulationConfig, optional): Configurações de simulação de tempo. Padrão TimeSimulationConfig().
+        """
+
+        assert self.asend_to_bot is not None, (
+            "Expected a type that implements IAsyncMessageSender, since arun is async! See run() for a sync version of this function."
+        )
+
+        thread_id = uuid.uuid4()
+        query = initial_msg
+
+        await self.asend_to_bot.create_channel(
+            {"persona": self.prompt_eng, "timesim": timesim_config.model_dump()}
+        )
+
+        simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
+
+        for _ in range(max_iterations):
+            response = str(
+                self.process_message(str(thread_id), HumanMessage(query)).content
+            )
+
+            ##### Simulação de Tempo ####
+            # Intervalo de Pausa
+            pause_time = dt.timedelta(seconds=0)
+            if timesim_config.should_pause():
+                pause_time = timesim_config.get_pause_time()
+                if timesim_config.simulate_delays:
+                    print(f"Pausing for: {pause_time}")
+                    await asyncio.sleep(pause_time.seconds)  # WARN: uses async sleep
+                simulated_timestamp += pause_time
+
+            # Intervalo para Reflexão
+            thinking_time = timesim_config.get_thinking_time()
+            if timesim_config.simulate_delays:
+                print(f"Thinking for: {thinking_time}")
+                await asyncio.sleep(thinking_time.seconds)  # WARN: uses async sleep
+            simulated_timestamp += thinking_time
+
+            # Intervalo de Digitação
+            typing_time = timesim_config.get_typing_delta(response)
+            if timesim_config.simulate_delays:
+                print(f"Typing message for: {typing_time}")
+                await asyncio.sleep(typing_time.seconds)  # WARN: Uses async sleep
+            simulated_timestamp += typing_time
+
+            timing_metadata: TimingMetadata = {
+                "simulated_timestamp": simulated_timestamp.timestamp(),
+                "typing_time": typing_time.total_seconds(),
+                "thinking_time": thinking_time.total_seconds(),
+                "pause_time": pause_time.total_seconds(),
+            }
+
+            ##### FIM da Simulação de Tempo ####
+            res = await self.asend_to_bot.send_message(
+                HumanMessage(response, timing_metadata=timing_metadata)
+            )
+            query = str(res.content)
 
             if self.EXIT_SAFE_WORD in response.lower():
                 print("=" * 8, "USUÁRIO ENCERROU A CONVERSA", "=" * 8)

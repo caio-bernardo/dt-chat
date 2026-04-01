@@ -71,7 +71,7 @@ async def create_message(
 ):
     """Creates a new message to the chatbot. Receives session id to continue a previous session dialogue."""
     try:
-        return await service.create_message(props)
+        return await service.save_publish_answer_message(props)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

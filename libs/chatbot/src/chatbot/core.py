@@ -13,7 +13,7 @@ class ChatBotBase:
         self,
         model: BaseChatModel | str,
         prompt_eng: SystemMessage | str,
-        initial_messages: list[AnyMessage] = [],
+        initial_messages: Sequence[AnyMessage] = [],
         toolkit: Sequence[BaseTool] = [],
         saver: Checkpointer = None,
     ):
@@ -23,7 +23,12 @@ class ChatBotBase:
             system_prompt=prompt_eng,
             checkpointer=saver,
         )
+        self._prompt_eng = prompt_eng
         self._initial_messages = initial_messages
+
+    @property
+    def prompt_eng(self) -> SystemMessage | str:
+        return self._prompt_eng
 
     def process_message(self, thread_id: str, message: HumanMessage) -> AIMessage:
         """Process an incoming human message and return the AIMessage response.
@@ -34,7 +39,7 @@ class ChatBotBase:
             AIMessage: The agent's response message.
         """
 
-        messages = self._initial_messages + [message]
+        messages = list(self._initial_messages) + [message]
         if self._initial_messages:
             self._initial_messages = []
 

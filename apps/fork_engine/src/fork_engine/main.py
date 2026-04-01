@@ -1,45 +1,54 @@
 import asyncio
-import uuid
 
-from bancobot.database import RedisStorage
+from bancobot.agent import BancoAgentBuilder
+from classifier.models import Touchpoint
+from pubsub.redis import RedisQueueConsumer, RedisQueueProducer
+from redis.asyncio import Redis
+from userbot import UserBotBuilder
 
-from fork_engine.builders import BancoBotBuilder, UserBotBuilder
-from fork_engine.engine import ForkConfig, ForkEngine, StreamData
-from fork_engine.helpers import load_history, map_internal_2_langchain_message
+from fork_engine.engine import ForkConfig, ForkEngine
+from fork_engine.helpers import (
+    retrieve_conversation_messages,
+    retrieve_conversation_metadata,
+    retrieve_timesim_from_metadata,
+    retrieve_userbot_persona_from_metadata,
+)
 
 
-def on_reclamacao(data: StreamData) -> ForkConfig | None:
-    # condition
-    if data["payload"].activity == "REJEIÇÃO DA SOLUÇÃO":
-        session = uuid.uuid4()
+def on_reclamacao(data: Touchpoint) -> ForkConfig:
+    bancobot = BancoAgentBuilder()
+    # bancobot.prompt = "Você um assistente virtual muito gentil" # exemplo de mudança de engenharia de prompt
 
-        # Init bots
-        bbbuilder = BancoBotBuilder()
-        bancobot = bbbuilder.build_with_default()
+    # Gets the persona and timesim from the original conversation
+    meta = retrieve_conversation_metadata(data.session_id)
 
-        conversation = load_history(
-            data["payload"].session_id, data["payload"].internal_id
-        )
+    # Userbot builder
+    userbot = UserBotBuilder()
+    userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
+    # put messages from the conversation on the userbot
+    conversation = retrieve_conversation_messages(data.session_id)
+    # pass all history except the last two messages that caused the current touchpoint + remove the last answer because the conversation will re-start from -4
+    userbot.initial_messages = conversation[:-3]
 
-        userbuilder = UserBotBuilder()
-        userbuilder.sender = lambda msg: bancobot.process_message(str(session), msg)
-        userbuilder.initial_messages = list(
-            map(map_internal_2_langchain_message, conversation)
-        )
-        userbot = userbuilder.build_with_default()
+    # retrieve the time config from the conversation
+    timesim = retrieve_timesim_from_metadata(meta)
 
-        return ForkConfig(
-            userbot=userbot,
-            bancobot=bancobot,
-            iterations=int(15 - len(conversation) / 2),
-            next_msg="",
-        )
-    return None
+    return ForkConfig(
+        parent_conversation=data.session_id,
+        bancobot_builder=bancobot,
+        userbot_builder=userbot,
+        next_msg=str(conversation[-4].content),
+        timesim=timesim,
+    )
 
 
 async def main():
-    redis = RedisStorage()
-    engine = ForkEngine(redis, [on_reclamacao])
+    redis = Redis()
+    consumer = RedisQueueConsumer(redis)
+    producer = RedisQueueProducer(redis)
+    engine = ForkEngine(consumer, producer)
+
+    engine.create_condition("REJEIÇÃO DA SOLUÇÃO", on_reclamacao)
     await engine.awatch()
 
 

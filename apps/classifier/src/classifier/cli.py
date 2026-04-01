@@ -1,12 +1,13 @@
 import asyncio
 import json
+import os
 from datetime import datetime
 from typing import Optional
 
 from bancobot.models import Message, MessageType
 from bancobot.services import QueueMessage
 from dotenv import load_dotenv
-from pubsub.redis import RedisQueueConsumer
+from pubsub.redis import RedisQueueConsumer, RedisQueueProducer
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from typer import Typer
@@ -19,6 +20,9 @@ from classifier.services import ClassifierService
 load_dotenv()
 
 app = Typer()
+
+MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
+TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
 
 
 def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
@@ -78,6 +82,7 @@ async def arun(config: ClassifierConfig):
     redis = get_redis()
     classifier = ClassifierService(agent, storage)
     consumer = RedisQueueConsumer(redis)
+    producer = RedisQueueProducer(redis)
 
     cases = {
         MessageType.AI: {"actor": "Bot", "tp_list": config.ai_touchpoint_list},
@@ -102,8 +107,15 @@ async def arun(config: ClassifierConfig):
 
             print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
 
-            # if config.stream:
-            #     await consumer.publish("tp_chan", tp.model_dump())
+            # INFO: we do not repass messages comming from the fork, or else we
+            # may have a recursive explosion of messages made by the forkers
+            # causing more forks
+            if config.stream and data["origin"] == "bancobot":
+                payload: QueueMessage = {
+                    "origin": "classifier",
+                    "content": tp.model_dump(mode="json"),
+                }
+                await producer.publish(TOUCHPOINT_CHANNEL, json.dumps(payload))
 
         except KeyboardInterrupt:
             print(
@@ -113,6 +125,8 @@ async def arun(config: ClassifierConfig):
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Failure on {e}")
             break
+        finally:
+            await consumer.unsubscribe(config.stream_name)
 
 
 @app.command()
