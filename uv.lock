@@ -974,6 +974,7 @@ dependencies = [
     { name = "pubsub" },
     { name = "pydantic" },
     { name = "redis" },
+    { name = "sqlmodel" },
     { name = "userbot" },
 ]
 
@@ -987,6 +988,7 @@ requires-dist = [
     { name = "pubsub", editable = "libs/pubsub" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "redis", specifier = ">=7.1.0" },
+    { name = "sqlmodel", specifier = ">=0.0.27" },
     { name = "userbot", editable = "libs/userbot" },
 ]
 
