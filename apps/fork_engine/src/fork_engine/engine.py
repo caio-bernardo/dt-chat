@@ -1,56 +1,102 @@
+import datetime as dt
+import json
+import os
 from multiprocessing import Process
-from typing import Callable, Iterable, Literal, TypedDict
+from typing import Callable
 
-from bancobot.agent import BancoAgent
-from bancobot.database import IStorage
+from bancobot.agent import BancoAgentBuilder
+from bancobot.services import QueueMessage
 from classifier.models import Touchpoint
+from dotenv import load_dotenv
+from pubsub import IPublisher, ISubscriber
 from pydantic import BaseModel
-from userbot import TimeSimulationConfig, UserBot
+from sqlmodel import Session, create_engine
+from userbot import TimeSimulationConfig, UserBotBuilder
 
+from .helpers import BancobotProcedureCallSender
 
-class StreamData(TypedDict):
-    origin: Literal["real", "simulated"]
-    payload: Touchpoint
+load_dotenv()
+
+TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
+
+TWIN_DATABASE_URL: str = os.environ["TWIN_DATABASE_URL"]
 
 
 class ForkConfig(BaseModel):
-    userbot: UserBot
+    """Configuration of a Fork process. Allows to create a new conversation between a userbot and a bancobot, with specific values."""
+
+    parent_conversation: int
+    bancobot_builder: BancoAgentBuilder
+    userbot_builder: UserBotBuilder
     next_msg: str
-    iterations: int = 15
     timesim: TimeSimulationConfig = TimeSimulationConfig()
-    bancobot: BancoAgent
+    iterations: int = 15
 
 
-Condition = Callable[[StreamData], ForkConfig | None]
+ConditionCallback = Callable[[Touchpoint], ForkConfig]
+
+
+def get_session(engine):
+    with Session(engine) as session:
+        yield session
 
 
 class ForkEngine:
-    def __init__(self, queue: IStorage, conditions: Iterable[Condition]):
+    """Engine to spawn new forks of conversations between bancobots and userbots"""
+
+    def __init__(self, queue: ISubscriber, queue_prod: IPublisher):
+        engine = create_engine(TWIN_DATABASE_URL)
+        self._storage = get_session(engine)
         self.queue = queue
-        self.conditions: Iterable[Condition] = conditions
+        self.queue_prod = queue_prod
+        self.conditions: dict[str, ConditionCallback] = {}
+
+    def create_condition(self, activity: str, callback: ConditionCallback):
+        """Create a new condition to spawn forks, if activity becomes true the callback is called."""
+        self.conditions[activity] = callback
 
     async def awatch(self):
-
+        """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
         threads: list[Process] = []
         while True:
             try:
-                data: StreamData = await self.queue.arcv("tp_chan")
+                data_str = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
+                data: QueueMessage = json.loads(data_str)
 
-                # Ignore simulated touchpoints, to avoid recursion
-                if data["origin"] == "simulated":
-                    continue
-
-                for condition in self.conditions:
-                    config = condition(data)
-                    if config:
-                        t = Process(target=self.fork, args=(config,))
-                        threads.append(t)
-                        t.start()
+                tp = Touchpoint.model_validate(data["content"])
+                # if there is a registered callback for an activity
+                # calls the callback and gets the config to spawn a new fork in a different process
+                # inspired by neovim `nvim.create_augroup()`.
+                callback = self.conditions.get(tp.activity)
+                if callback:
+                    config = callback(tp)
+                    t = Process(target=self.fork, args=(config,))
+                    threads.append(t)
+                    t.start()
             except Exception as e:
-                print("Finish all forks")
+                print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+            finally:
+                # Close queue and wait for forks to finish
+                print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
+                await self.queue.unsubscribe("tp_channel")
                 for t in threads:
                     t.join()
-                raise e
+                break
 
-    def fork(self, config: ForkConfig):
-        config.userbot.run(config.next_msg, config.iterations, config.timesim)
+    async def fork(self, config: ForkConfig):
+        """Spawn a New Fork of conversation from a configuration set."""
+        bancobot = config.bancobot_builder.build_with_default()
+        # create a service that can use bancoagent and publish the messages back to the classifier
+        # + Generates a new session connection for this fork, so each fork has a
+        # database connection that will be closed on exit.
+        config.userbot_builder.asender = BancobotProcedureCallSender(
+            config.parent_conversation, bancobot, next(self._storage), self.queue_prod
+        )
+
+        # execute the userbot
+        userbot = config.userbot_builder.build_with_default()
+        await userbot.arun(
+            config.next_msg,
+            config.iterations,
+            config.timesim,
+        )
