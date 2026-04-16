@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from langchain.agents.middleware.types import AgentMiddleware
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AnyMessage, SystemMessage
 from langchain_core.tools import BaseTool
@@ -12,6 +13,7 @@ class ChatBotBuilder:
     def __init__(self):
         self._model = None
         self._toolkit = None
+        self._middlewares = None
         self._prompt = None
         self._memory = None
         self._initial_messages = []
@@ -31,6 +33,14 @@ class ChatBotBuilder:
     @toolkit.setter
     def toolkit(self, toolkit: Sequence[BaseTool]):
         self._toolkit = toolkit
+
+    @property
+    def middlewares(self) -> Sequence[AgentMiddleware] | None:
+        return self._middlewares
+
+    @middlewares.setter
+    def middlewares(self, middlewares: Sequence[AgentMiddleware]):
+        self._middlewares = middlewares
 
     @property
     def prompt(self) -> str | SystemMessage | None:
@@ -62,11 +72,13 @@ class ChatBotBuilder:
             assert self._toolkit is not None
             assert self._prompt is not None
             assert self._initial_messages is not None
+            assert self._middlewares is not None
             assert self._memory is not None
             return ChatBotBase(
                 self._model,
                 self._prompt,
                 self._initial_messages,
+                self._middlewares,
                 self._toolkit,
                 self._memory,
             )

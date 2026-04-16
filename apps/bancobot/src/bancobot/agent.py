@@ -2,6 +2,7 @@ from typing import Sequence
 
 from chatbot import BaseChatModel, BaseTool, ChatBotBase, Checkpointer, SystemMessage
 from chatbot.builder import ChatBotBuilder
+from langchain.agents.middleware import AgentMiddleware
 from langchain_chroma import Chroma
 from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore
@@ -31,10 +32,11 @@ class BancoAgent(ChatBotBase):
         self,
         model: BaseChatModel | str,
         toolkit: Sequence[BaseTool] = [],
+        middleware: Sequence[AgentMiddleware] = [],
         prompt_eng: SystemMessage | str = BANCO_BOT_SYSTEM_PROMPT,
         saver: Checkpointer = None,
     ):
-        super().__init__(model, prompt_eng, [], toolkit, saver)
+        super().__init__(model, prompt_eng, [], middleware, toolkit, saver)
 
 
 def make_search_documentation_tool(vector_store: VectorStore) -> BaseTool:
@@ -73,10 +75,11 @@ class BancoAgentBuilder(ChatBotBuilder):
 
     def build_with_default(self) -> BancoAgent:
         self.model = self.model or DEFAULT_MODEL
-        self.toolkit = self.toolkit or [
-            make_search_documentation_tool(get_vector_store())
-        ]
+
+        self.toolkit = self.toolkit or []
+
         self.prompt = self.prompt or BANCO_BOT_SYSTEM_PROMPT
+        self.middlewares = self.middlewares or []
         self.memory = self.memory or InMemorySaver()
         return self.build()
 
@@ -84,8 +87,15 @@ class BancoAgentBuilder(ChatBotBuilder):
         try:
             assert self._model is not None
             assert self._toolkit is not None
+            assert self._middlewares is not None
             assert self._prompt is not None
-            return BancoAgent(self._model, self._toolkit, self._prompt, self._memory)
+            return BancoAgent(
+                self._model,
+                self._toolkit,
+                self._middlewares,
+                self._prompt,
+                self._memory,
+            )
         except AssertionError as e:
             raise ValueError(
                 f"Object build failed: {e}. Attribute must be defined to complete build."
