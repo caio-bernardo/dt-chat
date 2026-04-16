@@ -2,6 +2,7 @@ import uuid
 from typing import Sequence
 
 from langchain.agents import create_agent
+from langchain.agents.middleware.types import AgentMiddleware
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
@@ -14,12 +15,14 @@ class ChatBotBase:
         model: BaseChatModel | str,
         prompt_eng: SystemMessage | str,
         initial_messages: Sequence[AnyMessage] = [],
+        middlewares: Sequence[AgentMiddleware] = [],
         toolkit: Sequence[BaseTool] = [],
         saver: Checkpointer = None,
     ):
         self.agent = create_agent(
             model=model,
             tools=toolkit,
+            middleware=middlewares,
             system_prompt=prompt_eng,
             checkpointer=saver,
         )
