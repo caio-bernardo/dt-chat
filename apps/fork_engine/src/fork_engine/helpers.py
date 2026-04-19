@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Sequence
 
 import requests
@@ -30,7 +31,7 @@ def map_internal_2_langchain_message(msg: Message) -> AnyMessage:
             )
 
 
-def retrieve_conversation_metadata(conversation_id: int) -> dict:
+def retrieve_conversation_metadata(conversation_id: uuid.UUID) -> dict:
     """Makes a HTTP request to the original Banco Bot to retrieve metadata values from a given conversation"""
     data = requests.get(f"{BANCOBOT_URL}/sessions/{conversation_id}").json()
     meta = data["meta"]
@@ -49,7 +50,7 @@ def retrieve_userbot_persona_from_metadata(meta: dict) -> str:
     return meta["persona"]
 
 
-def retrieve_conversation_messages(conversation_id: int) -> Sequence[AnyMessage]:
+def retrieve_conversation_messages(conversation_id: uuid.UUID) -> Sequence[AnyMessage]:
     """Retrieve the messages from a given conversation"""
     data = requests.get(f"{BANCOBOT_URL}/sessions/{conversation_id}/messages").json()
     result = []
@@ -78,7 +79,11 @@ class BancobotProcedureCallSender(IAsyncMessageSender):
     """
 
     def __init__(
-        self, parent_id: int, agent: BancoAgent, storage: Session, producer: IPublisher
+        self,
+        parent_id: uuid.UUID,
+        agent: BancoAgent,
+        storage: Session,
+        producer: IPublisher,
     ):
         self.parent_conversation_id = parent_id
         self.conversation_id = None

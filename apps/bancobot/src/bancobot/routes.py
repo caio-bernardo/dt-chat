@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -49,7 +50,7 @@ async def get_sessions(
 
 @router.get("/sessions/{id}", response_model=ConversationPublicWithMessages)
 async def fetch_session(
-    id: int, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
+    id: uuid.UUID, service: Annotated[BancoBotService, Depends(get_bbchat_service)]
 ):
     """Fetch a session by its id"""
     return await service.fetch_session(id)
@@ -57,7 +58,7 @@ async def fetch_session(
 
 @router.delete("/sessions/{id}", response_model=None, status_code=204)
 async def delete_session(
-    id: int,
+    id: uuid.UUID,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
     """Delete a session by its id"""
@@ -78,7 +79,7 @@ async def create_message(
 
 @router.get("/sessions/{id}/messages", response_model=Sequence[MessagePublic])
 async def fetch_messages(
-    id: int,
+    id: uuid.UUID,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
 ):
     """Fetches all messages from the chatbot."""

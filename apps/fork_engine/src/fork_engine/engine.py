@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import os
+import uuid
 from multiprocessing import Process
 from typing import Callable
 
@@ -25,7 +26,7 @@ TWIN_DATABASE_URL: str = os.environ["TWIN_DATABASE_URL"]
 class ForkConfig(BaseModel):
     """Configuration of a Fork process. Allows to create a new conversation between a userbot and a bancobot, with specific values."""
 
-    parent_conversation: int
+    parent_conversation: uuid.UUID
     bancobot_builder: BancoAgentBuilder
     userbot_builder: UserBotBuilder
     next_msg: str
