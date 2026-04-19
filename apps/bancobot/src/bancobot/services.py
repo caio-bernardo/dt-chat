@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import os
+import uuid
 from typing import Dict, Sequence, TypedDict
 
 from chatbot import HumanMessage
@@ -76,7 +77,7 @@ class BancoBotService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def fetch_session(self, id: int) -> Conversation:
+    async def fetch_session(self, id: uuid.UUID) -> Conversation:
         """Fecth a single session"""
 
         session = self.storage.get(Conversation, id)
@@ -84,7 +85,7 @@ class BancoBotService:
             raise HTTPException(status_code=404, detail="Session not found")
         return session
 
-    async def delete_session(self, id: int) -> None:
+    async def delete_session(self, id: uuid.UUID) -> None:
         """Delete a session, also cascading their messages"""
 
         session = self.storage.get(Conversation, id)
@@ -94,7 +95,7 @@ class BancoBotService:
         self.storage.commit()
 
     def answer_message(
-        self, conversation_id: int, input: str, timing_metadata: TimingMetadata
+        self, conversation_id: uuid.UUID, input: str, timing_metadata: TimingMetadata
     ):
         """Answer a messsage using bancobot agent. Generate its own timing metadata using the function arguments."""
         start = dt.datetime.now()
@@ -131,7 +132,9 @@ class BancoBotService:
         except Exception as e:
             raise e
 
-    async def get_messages_by_conversation(self, session_id: int) -> Sequence[Message]:
+    async def get_messages_by_conversation(
+        self, session_id: uuid.UUID
+    ) -> Sequence[Message]:
         """Get a specific message by its ID."""
         return self.storage.exec(
             select(Message).where(Message.conversation_id == session_id)
@@ -148,7 +151,7 @@ class BancoBotService:
             raise e
 
     async def get_recent_messages(
-        self, session_id: int, limit: int = 10
+        self, session_id: uuid.UUID, limit: int = 10
     ) -> Sequence[Message]:
         """Get recent messages for a session."""
         try:

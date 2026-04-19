@@ -1,5 +1,6 @@
 import datetime as dt
 import enum
+import uuid
 
 from bancobot.models import MessageType
 from sqlmodel import Column, Enum, Field, SQLModel
@@ -28,7 +29,7 @@ class Touchpoint(SQLModel, table=True):
     """Touchpoint Model"""
 
     id: int | None = Field(default=None, primary_key=True)
-    session_id: int
+    session_id: uuid.UUID
     internal_id: int
     actor: ActorType = Field(
         default=ActorType.SYSTEM, sa_column=Column(Enum(ActorType))

@@ -1,5 +1,6 @@
 import datetime as dt
 import enum
+import uuid
 from typing import Dict, Optional
 
 from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
@@ -11,7 +12,7 @@ class ConversationBase(SQLModel):
     meta: Dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Used only by the fork_engine
-    parent_conversation_id: int | None = Field(
+    parent_conversation_id: uuid.UUID | None = Field(
         default=None, foreign_key="conversation.id", nullable=True
     )
 
@@ -19,7 +20,7 @@ class ConversationBase(SQLModel):
 class Conversation(ConversationBase, table=True):
     """Table for a Conversation."""
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
 
     parent_conversation: Optional["Conversation"] = Relationship(
@@ -37,7 +38,7 @@ class Conversation(ConversationBase, table=True):
 class ConversationPublic(ConversationBase):
     """Public view of a Conversation"""
 
-    id: int
+    id: uuid.UUID
     parent_conversation: Optional["ConversationPublic"] = None
     children_conversations: list["ConversationPublic"]
     created_at: dt.datetime
@@ -65,7 +66,9 @@ class MessageType(str, enum.Enum):
 class MessageBase(SQLModel):
     """Base for Message. Holds a conversation, content, type and metadata"""
 
-    conversation_id: int = Field(foreign_key="conversation.id", ondelete="CASCADE")
+    conversation_id: uuid.UUID = Field(
+        foreign_key="conversation.id", ondelete="CASCADE"
+    )
     content: str
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))

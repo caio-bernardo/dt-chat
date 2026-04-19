@@ -1,6 +1,6 @@
 import datetime as dt
 
-from bancobot.models import Message
+from bancobot.models import Message, uuid
 from sqlmodel import Session, col, func, select
 
 from classifier.agent import ClassifierAgent
@@ -14,7 +14,7 @@ class ClassifierService:
         self.agent = agent
         self.storage = storage
 
-    def _get_last_internal_id(self, case_id: int) -> int:
+    def _get_last_internal_id(self, case_id: uuid.UUID) -> int:
         """Returns the last used internal id from a case (equivalent for the number of messages in the case/conversation/session)"""
         return self.storage.exec(
             select(func.count(col(Touchpoint.session_id))).where(
