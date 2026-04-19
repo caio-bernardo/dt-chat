@@ -10,7 +10,7 @@ from bancobot.services import QueueMessage
 from classifier.models import Touchpoint
 from dotenv import load_dotenv
 from pubsub import IPublisher, ISubscriber
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, create_engine
 from userbot import TimeSimulationConfig, UserBotBuilder
 
@@ -25,6 +25,8 @@ TWIN_DATABASE_URL: str = os.environ["TWIN_DATABASE_URL"]
 
 class ForkConfig(BaseModel):
     """Configuration of a Fork process. Allows to create a new conversation between a userbot and a bancobot, with specific values."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     parent_conversation: uuid.UUID
     bancobot_builder: BancoAgentBuilder
@@ -45,8 +47,12 @@ def get_session(engine):
 class ForkEngine:
     """Engine to spawn new forks of conversations between bancobots and userbots"""
 
-    def __init__(self, queue: ISubscriber, queue_prod: IPublisher):
-        engine = create_engine(TWIN_DATABASE_URL)
+    def __init__(
+        self, queue: ISubscriber, queue_prod: IPublisher, db_url: str | None = None
+    ):
+        if db_url is None:
+            db_url = TWIN_DATABASE_URL
+        engine = create_engine(db_url)
         self._storage = get_session(engine)
         self.queue = queue
         self.queue_prod = queue_prod

@@ -20,7 +20,7 @@ class TestClassifierAgentInit:
         """Test agent initialization with custom temperature."""
         with patch("classifier.agent.init_chat_model") as mock_init:
             mock_init.return_value = MagicMock()
-            agent = ClassifierAgent(model="gpt-4", temperature=0.7)  # pyright: ignore[reportUnusedVariable]
+            agent = ClassifierAgent(model="gpt-4", temperature=0.7)
             mock_init.assert_called_once_with("gpt-4", max_tokens=100, temperature=0.7)
 
 
