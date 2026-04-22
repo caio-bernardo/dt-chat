@@ -1,5 +1,3 @@
-import asyncio
-
 from bancobot.agent import (
     BancoAgentBuilder,
     get_vector_store,
@@ -81,8 +79,15 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
     userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
     # put messages from the conversation on the userbot
     conversation = retrieve_conversation_messages(data.session_id)
-    # pass all history except the last two messages that caused the current touchpoint + remove the last answer because the conversation will re-start from -4
-    userbot.initial_messages = conversation[:-3]
+    print(f"[DEBUG]: {conversation}")
+    # pass history of conversation if we have at least 4 messages
+    # because -1 is the touchpoint, -2 is the answer that "caused" the
+    # touchpoint, and -3 will be reasked (or modified) in the next step to see
+    # if we can avoid the touchpoint
+    if len(conversation) < 4:
+        userbot.initial_messages = []
+    else:
+        userbot.initial_messages = conversation[:-4]  # last message that caused
 
     # retrieve the time config from the conversation
     timesim = retrieve_timesim_from_metadata(meta)
@@ -91,21 +96,23 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
         parent_conversation=data.session_id,
         bancobot_builder=bancobot,
         userbot_builder=userbot,
-        next_msg=str(conversation[-4].content),
+        next_msg=str(
+            conversation[-3].content
+        ),  # re-ask the message before the touchpoint
         timesim=timesim,
     )
 
 
-async def main():
+async def amain():
+    print("[INFO]: Initializing Fork Engine...")
+
     redis = Redis()
     consumer = RedisQueueConsumer(redis)
     producer = RedisQueueProducer(redis)
     engine = ForkEngine(consumer, producer)
 
-    # engine.create_condition("REJEIÇÃO DA SOLUÇÃO", on_reclamacao)
-    engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", on_transbordo)
+    print("[INFO]: Setting up fork conditions...")
+    engine.create_condition("FINALIZAÇÃO COM RECLAMAÇÃO", on_reclamacao)
+    # engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", on_transbordo)
+    print("[INFO]: Listening for new messages ...")
     await engine.awatch()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

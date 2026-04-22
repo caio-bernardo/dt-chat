@@ -71,6 +71,7 @@ class ForkEngine:
                 data: QueueMessage = json.loads(data_str)
 
                 tp = Touchpoint.model_validate(data["content"])
+                print(f"DEBUG: reads {tp}")
                 # if there is a registered callback for an activity
                 # calls the callback and gets the config to spawn a new fork in a different process
                 # inspired by neovim `nvim.create_augroup()`.
@@ -91,6 +92,10 @@ class ForkEngine:
                 break
 
     async def fork(self, config: ForkConfig):
+        print(
+            f"[{dt.datetime.now()}] - INFO: Spawning fork for conversation {config.parent_conversation}"
+        )
+
         """Spawn a New Fork of conversation from a configuration set."""
         bancobot = config.bancobot_builder.build_with_default()
         # create a service that can use bancoagent and publish the messages back to the classifier
