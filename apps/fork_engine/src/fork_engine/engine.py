@@ -1,15 +1,13 @@
 import datetime as dt
-import json
 import os
 import uuid
 from multiprocessing import Process
 from typing import Callable
 
 from bancobot.agent import BancoAgentBuilder
-from bancobot.services import QueueMessage
 from classifier.models import Touchpoint
 from dotenv import load_dotenv
-from pubsub import IPublisher, ISubscriber
+from pubsub import IPublisher, ISubscriber, QueueMessage
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, create_engine
 from userbot import TimeSimulationConfig, UserBotBuilder
@@ -67,8 +65,7 @@ class ForkEngine:
         threads: list[Process] = []
         while True:
             try:
-                data_str = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
-                data: QueueMessage = json.loads(data_str)
+                data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
 
                 tp = Touchpoint.model_validate(data["content"])
                 print(f"DEBUG: reads {tp}")

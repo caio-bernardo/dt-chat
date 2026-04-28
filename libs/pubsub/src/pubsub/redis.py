@@ -1,6 +1,8 @@
+import json
+
 import redis.asyncio as redis
 
-from pubsub.interfaces import IPublisher, ISubscriber
+from pubsub.interfaces import IPublisher, ISubscriber, QueueMessage
 
 
 class RedisQueueProducer(IPublisher):
@@ -9,12 +11,12 @@ class RedisQueueProducer(IPublisher):
     def __init__(self, redis_client: redis.Redis):
         self.redis_client = redis_client
 
-    async def publish(self, channel: str, message: str):
+    async def publish(self, channel: str, message: QueueMessage):
         """Push a message onto the queue (FIFO)"""
         # WARN: ignoring typing error, there seems to be a typing problem with redis
         # functions, there type indicates they both return awaitable and
         # nonawaitable types
-        await self.redis_client.lpush(channel, message)  # pyright: ignore[reportGeneralTypeIssues]
+        await self.redis_client.lpush(channel, json.dumps(message))  # pyright: ignore[reportGeneralTypeIssues]
 
 
 class RedisQueueConsumer(ISubscriber):
@@ -24,7 +26,7 @@ class RedisQueueConsumer(ISubscriber):
         self.redis_client = redis_client
         self._subscribed_channels = set()
 
-    async def subscribe(self, channel: str) -> str:
+    async def subscribe(self, channel: str) -> QueueMessage:
         """
         Subscribe to a queue and retrieve a message.
         Blocks until a message is available.
@@ -36,7 +38,9 @@ class RedisQueueConsumer(ISubscriber):
         if result:
             # brpop returns (channel_name, message) tuple
             message = result[1]
-            return message.decode("utf-8") if isinstance(message, bytes) else message
+            return json.loads(
+                message.decode("utf-8") if isinstance(message, bytes) else message
+            )
         raise Exception("somehow the blocking queue timeouted???")
 
     async def unsubscribe(self, channel: str):

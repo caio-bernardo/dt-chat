@@ -7,7 +7,7 @@ from bancobot.database import MessageType
 from bancobot.models import Message
 from bancobot.services import BancoBotService, ConversationCreate, MessageCreate
 from dotenv import load_dotenv
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
 from pubsub import IPublisher
 from sqlmodel import Session
 from userbot import IAsyncMessageSender, TimeSimulationConfig
@@ -29,6 +29,8 @@ def map_internal_2_langchain_message(msg: Message) -> AnyMessage:
             return HumanMessage(
                 content=msg.content,
             )
+        case MessageType.System:
+            return SystemMessage(content=msg.content)
 
 
 def retrieve_conversation_metadata(conversation_id: uuid.UUID) -> dict:

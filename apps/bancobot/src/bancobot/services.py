@@ -1,12 +1,11 @@
 import datetime as dt
-import json
 import os
 import uuid
-from typing import Dict, Sequence, TypedDict
+from typing import Optional, Sequence
 
 from chatbot import HumanMessage
 from fastapi import HTTPException
-from pubsub import IPublisher
+from pubsub import IPublisher, QueueMessage
 from sqlmodel import Session as DBSession
 from sqlmodel import col, desc, select
 
@@ -21,11 +20,6 @@ from .models import (
 )
 
 MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
-
-
-class QueueMessage(TypedDict):
-    origin: str
-    content: Dict
 
 
 def create_simulated_timestamp_or_default(
@@ -65,6 +59,8 @@ class BancoBotService:
         self.storage.add(session)
         self.storage.commit()
         self.storage.refresh(session)
+
+        await self.publish_conversation(session)
 
         return session
 
@@ -115,6 +111,11 @@ class BancoBotService:
         """Save to storage and pulbish message, answer it using AI agent,
         returning it. Also saves and publishes the answer"""
         try:
+            props.parent_message_id = (
+                await self._try_get_previous_message_id(props.conversation_id)
+                if not props.parent_message_id
+                else props.parent_message_id
+            )
             message = await self.save_and_publish_message(props, props.timing_metadata)
 
             answer, answer_metadata = self.answer_message(
@@ -124,6 +125,7 @@ class BancoBotService:
             payload = MessageCreate(
                 conversation_id=message.conversation_id,
                 content=str(answer.content),
+                parent_message_id=message.id,
                 type=MessageType.AI,
                 timing_metadata=answer_metadata,
             )
@@ -131,6 +133,17 @@ class BancoBotService:
             return await self.save_and_publish_message(payload, answer_metadata)
         except Exception as e:
             raise e
+
+    async def _try_get_previous_message_id(
+        self, conversation_id: uuid.UUID
+    ) -> Optional[uuid.UUID]:
+        """Try to get the previous message in the conversation."""
+        messages = self.storage.exec(
+            select(Message).where(Message.conversation_id == conversation_id)
+        ).all()
+        if not messages:
+            return None
+        return messages[-1].id
 
     async def get_messages_by_conversation(
         self, session_id: uuid.UUID
@@ -165,18 +178,32 @@ class BancoBotService:
         except Exception as e:
             raise e
 
-    async def publish(self, msg: Message):
+    async def publish_message(self, msg: Message):
         """Publish a Message to a internal channel as json string."""
         try:
             # uses json mode to parse datetime into isoformat
             payload: QueueMessage = {
                 "origin": self.source,
+                "model_type": "message",
                 "content": msg.model_dump(mode="json"),
             }
-            await self.producer.publish(self.channel, json.dumps(payload))
+            await self.producer.publish(self.channel, payload)
         except Exception as e:
             print(
                 f"[{dt.datetime.now()}] WARN: failed to publish message to queue. Detail: {str(e)}"
+            )
+
+    async def publish_conversation(self, conversation: Conversation):
+        try:
+            payload: QueueMessage = {
+                "origin": self.source,
+                "model_type": "conversation",
+                "content": conversation.model_dump(mode="json"),
+            }
+            await self.producer.publish(self.channel, payload)
+        except Exception as e:
+            print(
+                f"[{dt.datetime.now()}] WARN: failed to publish conversation to queue. Detail: {str(e)}"
             )
 
     def save_message(
@@ -190,6 +217,7 @@ class BancoBotService:
             conversation_id=props.conversation_id,
             content=props.content,
             type=props.type,
+            parent_message_id=props.parent_message_id,
             timing_metadata=timing_metadata,
         )
         self.storage.add(message)
@@ -204,5 +232,5 @@ class BancoBotService:
     ) -> Message:
         """Save Message to Storage and Publish to Cache Channel."""
         msg = self.save_message(props, timing_metadata)
-        await self.publish(msg)
+        await self.publish_message(msg)
         return msg

@@ -49,15 +49,15 @@ def on_transbordo(data: Touchpoint) -> ForkConfig:
     bancobot.middlewares = [prompt_with_context]
 
     # User Bot
-    meta = retrieve_conversation_metadata(data.session_id)
+    meta = retrieve_conversation_metadata(data.message.conversation_id)
     userbot = UserBotBuilder()
     userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
-    conversation = retrieve_conversation_messages(data.session_id)
+    conversation = retrieve_conversation_messages(data.message.conversation_id)
     userbot.initial_messages = conversation[:-3]
     timesim = retrieve_timesim_from_metadata(meta)
 
     return ForkConfig(
-        parent_conversation=data.session_id,
+        parent_conversation=data.message.conversation_id,
         bancobot_builder=bancobot,
         userbot_builder=userbot,
         next_msg="",
@@ -72,13 +72,13 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
     bancobot.toolkit = [make_search_documentation_tool(get_vector_store())]
 
     # Gets the persona and timesim from the original conversation
-    meta = retrieve_conversation_metadata(data.session_id)
+    meta = retrieve_conversation_metadata(data.message.conversation_id)
 
     # Userbot builder
     userbot = UserBotBuilder()
     userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
     # put messages from the conversation on the userbot
-    conversation = retrieve_conversation_messages(data.session_id)
+    conversation = retrieve_conversation_messages(data.message.conversation_id)
     print(f"[DEBUG]: {conversation}")
     # pass history of conversation if we have at least 4 messages
     # because -1 is the touchpoint, -2 is the answer that "caused" the
@@ -93,7 +93,7 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
     timesim = retrieve_timesim_from_metadata(meta)
 
     return ForkConfig(
-        parent_conversation=data.session_id,
+        parent_conversation=data.message.conversation_id,
         bancobot_builder=bancobot,
         userbot_builder=userbot,
         next_msg=str(

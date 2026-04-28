@@ -11,11 +11,6 @@ class ConversationBase(SQLModel):
     # Holds info about the persona and timesimulation config
     meta: Dict = Field(default_factory=dict, sa_column=Column(JSON))
 
-    # Used only by the fork_engine
-    parent_conversation_id: uuid.UUID | None = Field(
-        default=None, foreign_key="conversation.id", nullable=True
-    )
-
 
 class Conversation(ConversationBase, table=True):
     """Table for a Conversation."""
@@ -23,13 +18,6 @@ class Conversation(ConversationBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
 
-    parent_conversation: Optional["Conversation"] = Relationship(
-        back_populates="children_conversations",
-        sa_relationship_kwargs={"remote_side": "Conversation.id"},
-    )
-    children_conversations: list["Conversation"] = Relationship(
-        back_populates="parent_conversation"
-    )
     messages: list["Message"] = Relationship(
         back_populates="conversation", cascade_delete=True
     )
@@ -39,15 +27,13 @@ class ConversationPublic(ConversationBase):
     """Public view of a Conversation"""
 
     id: uuid.UUID
-    parent_conversation: Optional["ConversationPublic"] = None
-    children_conversations: list["ConversationPublic"]
     created_at: dt.datetime
 
 
 class ConversationPublicWithMessages(ConversationPublic):
     """Public view of a Conversation with list of messages"""
 
-    messages: list["MessagePublicWithoutConversation"]
+    messages: list["MessagePublic"]
 
 
 class ConversationCreate(ConversationBase):
@@ -61,6 +47,7 @@ class MessageType(str, enum.Enum):
 
     AI = "ai"
     Human = "human"  # Aksually... it may not be a human but represents a client
+    System = "System"
 
 
 class MessageBase(SQLModel):
@@ -77,28 +64,49 @@ class MessageBase(SQLModel):
         default_factory=dict, sa_column=Column(JSON)
     )
 
+    # Used to create a timeline
+    parent_message_id: uuid.UUID | None = Field(foreign_key="message.id", default=None)
+
 
 class Message(MessageBase, table=True):
     """Message table on the database"""
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
     conversation: Conversation = Relationship(back_populates="messages")
+    parent_message: Optional["Message"] = Relationship(
+        back_populates="children_messages",
+        sa_relationship_kwargs={"remote_side": "Message.id"},
+    )
+    children_messages: list["Message"] = Relationship(back_populates="parent_message")
 
 
 class MessagePublic(MessageBase):
     """Public view of a Message"""
 
     id: int
-    conversation: ConversationPublic
     created_at: dt.datetime
 
 
-class MessagePublicWithoutConversation(MessageBase):
+class MessagePublicWithConversation(MessageBase):
     """Public Message Without Conversation data"""
 
-    created_at: dt.datetime
     id: int
+    created_at: dt.datetime
+    conversation: ConversationPublic
+
+
+class MessagePublicWithParent(MessageBase):
+    id: int
+    created_at: dt.datetime
+    parent: Optional[MessagePublicWithConversation] = None
+
+
+class MessagePublicComplete(MessageBase):
+    id: int
+    created_at: dt.datetime
+    conversation: ConversationPublic
+    parent: Optional[MessagePublicWithConversation] = None
 
 
 class MessageCreate(MessageBase):

@@ -1,10 +1,7 @@
-import datetime as dt
-
-from bancobot.models import Message, uuid
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session
 
 from classifier.agent import ClassifierAgent
-from classifier.models import Touchpoint, from_message_type
+from classifier.models import Conversation, Message, Touchpoint
 
 
 class ClassifierService:
@@ -14,37 +11,28 @@ class ClassifierService:
         self.agent = agent
         self.storage = storage
 
-    def _get_last_internal_id(self, case_id: uuid.UUID) -> int:
-        """Returns the last used internal id from a case (equivalent for the number of messages in the case/conversation/session)"""
-        return self.storage.exec(
-            select(func.count(col(Touchpoint.session_id))).where(
-                Touchpoint.session_id == case_id
-            )
-        ).one()
-
     async def create_touchpoint(
         self, msg: Message, actor: str, tp_list: list[str]
     ) -> Touchpoint:
         """Creates a new touchpoint requesting to the agent"""
-        last_internal_id = self._get_last_internal_id(msg.conversation_id)
+        activity = await self.agent.classify(msg.content, actor, tp_list)
 
-        touchpoint = await self.agent.classify(msg.content, actor, tp_list)
-
-        case_id = msg.conversation_id
-        timestamp = (
-            dt.datetime.fromtimestamp(msg.timing_metadata["simulated_timestamp"])
-            if msg.timing_metadata
-            else msg.created_at
-        )
         return Touchpoint(
-            session_id=case_id,
-            internal_id=last_internal_id + 1,
-            actor=from_message_type(msg.type),
-            message_id=msg.id or -1,
-            message=msg.content,
-            activity=touchpoint,
-            timestamp=timestamp,
+            message_id=msg.id,
+            activity=activity,
         )
+
+    def save_conversation(self, conversation: Conversation):
+        """Saves a conversation on the database"""
+        self.storage.add(conversation)
+        self.storage.commit()
+        self.storage.refresh(conversation)
+
+    def save_message(self, msg: Message):
+        """Saves a message on the database"""
+        self.storage.add(msg)
+        self.storage.commit()
+        self.storage.refresh(msg)
 
     def save_touchpoint(self, touchpoint: Touchpoint):
         """Saves a touchpoint on the database"""
