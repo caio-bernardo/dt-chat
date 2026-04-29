@@ -4,9 +4,9 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from bancobot.models import Message, MessageType
-from bancobot.services import QueueMessage
+from bancobot.models import MessageType
 from dotenv import load_dotenv
+from pubsub import QueueMessage
 from pubsub.redis import RedisQueueConsumer, RedisQueueProducer
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -15,6 +15,7 @@ from typer import Typer
 from classifier.agent import ClassifierAgent
 from classifier.database import create_db_and_tables, get_session
 from classifier.exporter import TouchpointExporter
+from classifier.models import Conversation, Message
 from classifier.services import ClassifierService
 
 load_dotenv()
@@ -96,11 +97,18 @@ async def arun(config: ClassifierConfig):
 
     while True:
         try:
-            data_str = await consumer.subscribe(config.stream_name)
-            data: QueueMessage = json.loads(data_str)
+            data: QueueMessage = await consumer.subscribe(config.stream_name)
+
+            if data["model_type"] == "conversation":
+                conversation = Conversation.model_validate(data["content"])
+                classifier.save_conversation(conversation)
+                continue
+            elif data["model_type"] != "message":
+                raise ValueError("Wrong data passed on the queue:", data)
 
             message = Message.model_validate(data["content"])
 
+            classifier.save_message(message)
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
@@ -113,9 +121,10 @@ async def arun(config: ClassifierConfig):
             if config.stream and data["origin"] == "bancobot":
                 payload: QueueMessage = {
                     "origin": "classifier",
+                    "model_type": "touchpoint",
                     "content": tp.model_dump(mode="json"),
                 }
-                await producer.publish(TOUCHPOINT_CHANNEL, json.dumps(payload))
+                await producer.publish(TOUCHPOINT_CHANNEL, payload)
 
         except KeyboardInterrupt:
             print(

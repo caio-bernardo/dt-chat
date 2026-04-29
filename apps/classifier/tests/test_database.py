@@ -26,14 +26,23 @@ class TestCreateDbAndTables:
         columns = {col["name"] for col in inspector.get_columns("touchpoint")}
 
         assert "id" in columns
-        assert "session_id" in columns
-        assert "internal_id" in columns
-        assert "actor" in columns
         assert "message_id" in columns
-        assert "message" in columns
-        assert "timestamp" in columns
         assert "activity" in columns
         assert "created_at" in columns
+
+    def test_touchpoint_table_has_message_relationship(self):
+        """Test that Touchpoint table has foreign key to Message."""
+        engine = create_db_and_tables("sqlite:///:memory:")
+        inspector = inspect(engine)
+
+        # Check foreign keys
+        fks = inspector.get_foreign_keys("touchpoint")
+        assert len(fks) > 0
+
+        # Check that message_id is a foreign key to message.id
+        message_fk = [fk for fk in fks if fk["constrained_columns"] == ["message_id"]]
+        assert len(message_fk) > 0
+        assert message_fk[0]["referred_table"] == "message"
 
     def test_create_db_and_tables_idempotent(self):
         """Test that creating tables multiple times is safe."""

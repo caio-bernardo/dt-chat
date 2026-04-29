@@ -1,15 +1,13 @@
 import datetime as dt
-import json
 import os
 import uuid
 from multiprocessing import Process
 from typing import Callable
 
 from bancobot.agent import BancoAgentBuilder
-from bancobot.services import QueueMessage
 from classifier.models import Touchpoint
 from dotenv import load_dotenv
-from pubsub import IPublisher, ISubscriber
+from pubsub import IPublisher, ISubscriber, QueueMessage
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, create_engine
 from userbot import TimeSimulationConfig, UserBotBuilder
@@ -67,10 +65,10 @@ class ForkEngine:
         threads: list[Process] = []
         while True:
             try:
-                data_str = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
-                data: QueueMessage = json.loads(data_str)
+                data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
 
                 tp = Touchpoint.model_validate(data["content"])
+                print(f"DEBUG: reads {tp}")
                 # if there is a registered callback for an activity
                 # calls the callback and gets the config to spawn a new fork in a different process
                 # inspired by neovim `nvim.create_augroup()`.
@@ -91,6 +89,10 @@ class ForkEngine:
                 break
 
     async def fork(self, config: ForkConfig):
+        print(
+            f"[{dt.datetime.now()}] - INFO: Spawning fork for conversation {config.parent_conversation}"
+        )
+
         """Spawn a New Fork of conversation from a configuration set."""
         bancobot = config.bancobot_builder.build_with_default()
         # create a service that can use bancoagent and publish the messages back to the classifier

@@ -9,7 +9,9 @@ from bancobot.models import (
     Message,
     MessageCreate,
     MessagePublic,
-    MessagePublicWithoutConversation,
+    MessagePublicComplete,
+    MessagePublicWithConversation,
+    MessagePublicWithParent,
     MessageType,
 )
 
@@ -23,8 +25,11 @@ class TestMessageType:
     def test_message_type_human(self):
         assert MessageType.Human == "human"
 
+    def test_message_type_system(self):
+        assert MessageType.System == "System"
+
     def test_message_type_values(self):
-        assert len(MessageType) == 2
+        assert len(MessageType) == 3
 
 
 class TestConversationCreate:
@@ -38,11 +43,6 @@ class TestConversationCreate:
         meta = {"persona": "test_user", "lang": "pt-BR"}
         conv = ConversationCreate(meta=meta)
         assert conv.meta == meta
-
-    def test_conversation_create_with_parent(self):
-        parent_id = uuid.uuid4()
-        conv = ConversationCreate(parent_conversation_id=parent_id)
-        assert conv.parent_conversation_id == parent_id
 
 
 class TestConversation:
@@ -59,12 +59,6 @@ class TestConversation:
         assert isinstance(conv.id, uuid.UUID)
         assert isinstance(conv.created_at, dt.datetime)
         assert conv.meta == {}
-        assert conv.parent_conversation_id is None
-
-    def test_conversation_with_parent_id(self):
-        parent_id = uuid.uuid4()
-        conv = Conversation(parent_conversation_id=parent_id)
-        assert conv.parent_conversation_id == parent_id
 
 
 class TestConversationPublic:
@@ -72,18 +66,15 @@ class TestConversationPublic:
 
     def test_conversation_public_creation(self):
         conv_id = uuid.uuid4()
-        conv = ConversationPublic(
-            id=conv_id, meta={}, children_conversations=[], created_at=dt.datetime.now()
-        )
+        conv = ConversationPublic(id=conv_id, meta={}, created_at=dt.datetime.now())
         assert conv.id == conv_id
-        assert conv.children_conversations == []
+        assert conv.meta == {}
 
     def test_conversation_public_with_meta(self):
         meta = {"persona": "user1"}
         conv = ConversationPublic(
             id=uuid.uuid4(),
             meta=meta,
-            children_conversations=[],
             created_at=dt.datetime.now(),
         )
         assert conv.meta == meta
@@ -96,7 +87,6 @@ class TestConversationPublicWithMessages:
         conv = ConversationPublicWithMessages(
             id=uuid.uuid4(),
             meta={},
-            children_conversations=[],
             created_at=dt.datetime.now(),
             messages=[],
         )
@@ -133,6 +123,15 @@ class TestMessageCreate:
         )
         assert msg.timing_metadata == timing_metadata
 
+    def test_message_create_with_parent_message_id(self, conversation):
+        parent_id = uuid.uuid4()
+        msg = MessageCreate(
+            conversation_id=conversation.id,
+            content="Reply message",
+            parent_message_id=parent_id,
+        )
+        assert msg.parent_message_id == parent_id
+
 
 class TestMessage:
     """Test Message model."""
@@ -164,6 +163,16 @@ class TestMessage:
         )
         assert msg.timing_metadata == timing_metadata
 
+    def test_message_with_parent_message_id(self, conversation):
+        parent_id = uuid.uuid4()
+        msg = Message(
+            conversation_id=conversation.id,
+            content="Reply to parent",
+            parent_message_id=parent_id,
+        )
+        assert msg.parent_message_id == parent_id
+        assert msg.created_at is not None
+
 
 class TestMessagePublic:
     """Test MessagePublic model."""
@@ -174,30 +183,137 @@ class TestMessagePublic:
             conversation_id=conversation.id,
             content="Public message",
             type=MessageType.AI,
-            conversation=ConversationPublic(
-                id=conversation.id,
-                meta=conversation.meta,
-                children_conversations=[],
-                created_at=conversation.created_at,
-            ),
             created_at=dt.datetime.now(),
         )
         assert msg.id == 1
         assert msg.content == "Public message"
         assert msg.type == MessageType.AI
 
+    def test_message_public_with_parent_message_id(self, conversation):
+        parent_id = uuid.uuid4()
+        msg = MessagePublic(
+            id=1,
+            conversation_id=conversation.id,
+            content="Public message with parent",
+            type=MessageType.Human,
+            parent_message_id=parent_id,
+            created_at=dt.datetime.now(),
+        )
+        assert msg.parent_message_id == parent_id
 
-class TestMessagePublicWithoutConversation:
-    """Test MessagePublicWithoutConversation model."""
 
-    def test_message_public_without_conversation(self, conversation):
-        msg = MessagePublicWithoutConversation(
+class TestMessagePublicWithConversation:
+    """Test MessagePublicWithConversation model."""
+
+    def test_message_public_with_conversation(self, conversation):
+        msg = MessagePublicWithConversation(
             id=1,
             conversation_id=conversation.id,
             content="Test",
             type=MessageType.Human,
             created_at=dt.datetime.now(),
+            conversation=ConversationPublic(
+                id=conversation.id,
+                meta=conversation.meta,
+                created_at=conversation.created_at,
+            ),
         )
         assert msg.id == 1
         assert msg.conversation_id == conversation.id
-        assert not hasattr(msg, "conversation")
+        assert hasattr(msg, "conversation")
+
+
+class TestMessagePublicWithParent:
+    """Test MessagePublicWithParent model."""
+
+    def test_message_public_with_parent_no_parent(self, conversation):
+        msg = MessagePublicWithParent(
+            id=1,
+            conversation_id=conversation.id,
+            content="First message",
+            type=MessageType.Human,
+            created_at=dt.datetime.now(),
+            parent=None,
+        )
+        assert msg.id == 1
+        assert msg.parent is None
+
+    def test_message_public_with_parent_with_parent(self, conversation):
+        parent_msg = MessagePublicWithConversation(
+            id=1,
+            conversation_id=conversation.id,
+            content="Parent message",
+            type=MessageType.Human,
+            created_at=dt.datetime.now(),
+            conversation=ConversationPublic(
+                id=conversation.id,
+                meta=conversation.meta,
+                created_at=conversation.created_at,
+            ),
+        )
+        msg = MessagePublicWithParent(
+            id=2,
+            conversation_id=conversation.id,
+            content="Child message",
+            type=MessageType.AI,
+            created_at=dt.datetime.now(),
+            parent=parent_msg,
+        )
+        assert msg.id == 2
+        assert msg.parent is not None
+        assert msg.parent.id == 1
+
+
+class TestMessagePublicComplete:
+    """Test MessagePublicComplete model."""
+
+    def test_message_public_complete_creation(self, conversation):
+        msg = MessagePublicComplete(
+            id=1,
+            conversation_id=conversation.id,
+            content="Complete message",
+            type=MessageType.Human,
+            created_at=dt.datetime.now(),
+            conversation=ConversationPublic(
+                id=conversation.id,
+                meta=conversation.meta,
+                created_at=conversation.created_at,
+            ),
+            parent=None,
+        )
+        assert msg.id == 1
+        assert msg.conversation_id == conversation.id
+        assert msg.type == MessageType.Human
+        assert hasattr(msg, "conversation")
+        assert hasattr(msg, "parent")
+
+    def test_message_public_complete_with_parent(self, conversation, timing_metadata):
+        parent_msg = MessagePublicWithConversation(
+            id=1,
+            conversation_id=conversation.id,
+            content="Parent",
+            type=MessageType.Human,
+            timing_metadata=timing_metadata,
+            created_at=dt.datetime.now(),
+            conversation=ConversationPublic(
+                id=conversation.id,
+                meta=conversation.meta,
+                created_at=conversation.created_at,
+            ),
+        )
+        msg = MessagePublicComplete(
+            id=2,
+            conversation_id=conversation.id,
+            content="Child message",
+            type=MessageType.AI,
+            timing_metadata=timing_metadata,
+            created_at=dt.datetime.now(),
+            conversation=ConversationPublic(
+                id=conversation.id,
+                meta=conversation.meta,
+                created_at=conversation.created_at,
+            ),
+            parent=parent_msg,
+        )
+        assert msg.parent is not None
+        assert msg.parent.content == "Parent"

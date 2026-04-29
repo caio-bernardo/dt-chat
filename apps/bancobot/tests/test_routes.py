@@ -29,22 +29,23 @@ def create_test_timing_metadata() -> TimingMetadata:
 def create_message_response(
     conversation: Conversation, msg_id: int, content: str, msg_type: MessageType
 ):
-    """Helper to create a MessagePublic for API responses."""
-    from bancobot.models import MessagePublic
+    """Helper to create a MessagePublicComplete for API responses."""
+    from bancobot.models import MessagePublicComplete
 
     conv_public = ConversationPublic(
         id=conversation.id,
         meta=conversation.meta,
-        children_conversations=[],
         created_at=conversation.created_at,
     )
-    return MessagePublic(
+    return MessagePublicComplete(
         id=msg_id,
         conversation_id=conversation.id,
         conversation=conv_public,
         content=content,
         type=msg_type,
         timing_metadata=create_test_timing_metadata(),
+        parent_message_id=None,
+        parent=None,
         created_at=dt.datetime.now(),
     )
 

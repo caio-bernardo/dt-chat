@@ -9,7 +9,7 @@ from .models import (
     ConversationPublic,
     ConversationPublicWithMessages,
     MessageCreate,
-    MessagePublic,
+    MessagePublicComplete,
 )
 from .services import BancoBotService
 
@@ -65,7 +65,7 @@ async def delete_session(
     return await service.delete_session(id)
 
 
-@router.post("/messages", response_model=MessagePublic, status_code=201)
+@router.post("/messages", response_model=MessagePublicComplete, status_code=201)
 async def create_message(
     props: MessageCreate,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],
@@ -77,7 +77,7 @@ async def create_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/sessions/{id}/messages", response_model=Sequence[MessagePublic])
+@router.get("/sessions/{id}/messages", response_model=Sequence[MessagePublicComplete])
 async def fetch_messages(
     id: uuid.UUID,
     service: Annotated[BancoBotService, Depends(get_bbchat_service)],

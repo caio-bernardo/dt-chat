@@ -1,42 +1,33 @@
 import datetime as dt
-import enum
 import uuid
 
-from bancobot.models import MessageType
-from sqlmodel import Column, Enum, Field, SQLModel
-
-
-class ActorType(str, enum.Enum):
-    """Represent Actor in a message"""
-
-    SYSTEM = "System"
-    AI = "AI"
-    HUMAN = "Human"
-
-
-def from_message_type(type: MessageType) -> ActorType:
-    """Converts from a MessageType to an ActorType so it can be used in the Touchpoint"""
-    match type:
-        case MessageType.Human:
-            return ActorType.HUMAN
-        case MessageType.AI:
-            return ActorType.AI
-        case _:
-            raise ValueError(f"Invalid message type: {type}")
+# Usado para criar a tabela Messages no lado do classificador
+from bancobot.models import (
+    Conversation,  # pyright: ignore[reportUnusedImport]
+    Message,
+)
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class Touchpoint(SQLModel, table=True):
     """Touchpoint Model"""
 
     id: int | None = Field(default=None, primary_key=True)
-    session_id: uuid.UUID
-    internal_id: int
-    actor: ActorType = Field(
-        default=ActorType.SYSTEM, sa_column=Column(Enum(ActorType))
-    )
-    message_id: int
-    message: str
-    timestamp: dt.datetime
+    message_id: uuid.UUID = Field(foreign_key="message.id")
+    message: Message = Relationship()
     activity: str
 
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+
+    @property
+    def timestamp(self) -> dt.datetime:
+        return (
+            dt.datetime.fromtimestamp(
+                self.message.timing_metadata["simulated_timestamp"]
+            )
+            or self.message.created_at
+        )
+
+    @property
+    def conversation_id(self) -> uuid.UUID:
+        return self.message.conversation_id
