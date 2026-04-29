@@ -4,15 +4,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from bancobot.database import MessageType
 from bancobot.models import Message
-from langchain_core.messages import AIMessage, HumanMessage
-from userbot import TimeSimulationConfig
-
 from fork_engine.helpers import (
     BancobotProcedureCallSender,
     map_internal_2_langchain_message,
     retrieve_timesim_from_metadata,
     retrieve_userbot_persona_from_metadata,
 )
+from langchain_core.messages import AIMessage, HumanMessage
+from userbot import TimeSimulationConfig
 
 
 class TestMessageMapping:
@@ -21,7 +20,7 @@ class TestMessageMapping:
     def test_map_human_message(self):
         """Test mapping human message."""
         msg = Message(
-            id=1,
+            id=uuid.uuid4(),
             conversation_id=uuid.uuid4(),
             type=MessageType.Human,
             content="Hello",
@@ -34,7 +33,7 @@ class TestMessageMapping:
     def test_map_ai_message(self):
         """Test mapping AI message."""
         msg = Message(
-            id=1,
+            id=uuid.uuid4(),
             conversation_id=uuid.uuid4(),
             type=MessageType.AI,
             content="Hi there",

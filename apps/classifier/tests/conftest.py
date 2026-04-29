@@ -3,13 +3,13 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from classifier.agent import ClassifierAgent
-from classifier.models import ActorType, Touchpoint
-from classifier.services import ClassifierService
+from bancobot.models import Conversation, Message, MessageType
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from bancobot.models import Message, MessageType
+from classifier.agent import ClassifierAgent
+from classifier.models import Touchpoint
+from classifier.services import ClassifierService
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def sample_message():
     """Create a sample Message from bancobot."""
     conversation_id = uuid.uuid4()
     return Message(
-        id=1,
+        id=uuid.uuid4(),
         conversation_id=conversation_id,
         content="Qual é o meu saldo?",
         type=MessageType.Human,
@@ -62,12 +62,8 @@ def sample_message():
 def sample_touchpoint(sample_message):
     """Create a sample Touchpoint."""
     return Touchpoint(
-        session_id=sample_message.conversation_id,
-        internal_id=1,
-        actor=ActorType.HUMAN,
         message_id=sample_message.id,
-        message=sample_message.content,
-        timestamp=dt.datetime.now(),
+        message=sample_message,
         activity="SALDO_CONSULTA",
         created_at=dt.datetime.now(),
     )
@@ -89,3 +85,13 @@ def touchpoint_list():
         "PAGAMENTO_BOLETO",
         "CARTAO_CREDITO",
     ]
+
+
+@pytest.fixture
+def sample_conversation():
+    """Create a sample Conversation from bancobot."""
+    return Conversation(
+        id=uuid.uuid4(),
+        meta={},
+        created_at=dt.datetime.now(),
+    )

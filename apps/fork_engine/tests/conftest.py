@@ -4,13 +4,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from bancobot.agent import BancoAgent, BancoAgentBuilder
+from bancobot.database import MessageType
+from bancobot.models import Conversation, Message
 from classifier.models import Touchpoint
+from fork_engine.engine import ForkConfig, ForkEngine
 from langchain_core.messages import AIMessage
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 from userbot import TimeSimulationConfig, UserBotBuilder
-
-from fork_engine.engine import ForkConfig, ForkEngine
 
 
 @pytest.fixture
@@ -92,12 +93,36 @@ def fork_config(mock_bancobot_builder, mock_userbot_builder):
 
 
 @pytest.fixture
-def touchpoint():
-    """Create a sample Touchpoint."""
-    return Touchpoint(  # pyright: ignore[reportCallIssue]
+def sample_message(db_session):
+    """Create a sample Message."""
+    conv = Conversation(
         id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
-        activity="SOLICITAÇÃO DIRETA DE HUMANO",
-        timestamp=datetime.now().isoformat(),
-        metadata={},  # pyright: ignore[reportCallIssue]
+        meta={},  # pyright: ignore[reportArgumentType]
     )
+    db_session.add(conv)
+    db_session.flush()
+
+    message = Message(
+        id=uuid.uuid4(),
+        conversation_id=conv.id,
+        type=MessageType.Human,
+        content="Test message",
+        timing_metadata={},  # pyright: ignore[reportArgumentType]
+    )
+    db_session.add(message)
+    db_session.flush()
+    return message
+
+
+@pytest.fixture
+def touchpoint(db_session, sample_message):
+    """Create a sample Touchpoint."""
+    touchpoint = Touchpoint(
+        message_id=sample_message.id,
+        message=sample_message,
+        activity="SOLICITAÇÃO DIRETA DE HUMANO",
+        created_at=datetime.now(),
+    )
+    db_session.add(touchpoint)
+    db_session.flush()
+    return touchpoint
