@@ -32,3 +32,9 @@ visualizer = "uv run --package visualizer streamlit run apps/visualizer/src/visu
 classifier = "uv run --package classifier classifier run --stream data/touchpoints/Touchpoint_ai.json data/touchpoints/Touchpoint_human.json"
 classifier-cli = "uv run --package classifier classifier"
 fork = "uv run --package fork-engine fork-engine"
+
+[tool.coverage.run]
+omit = [
+    "__init__.py",
+    "main.py"
+]

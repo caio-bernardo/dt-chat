@@ -18,3 +18,16 @@ class Touchpoint(SQLModel, table=True):
     activity: str
 
     created_at: dt.datetime = Field(default_factory=dt.datetime.now)
+
+    @property
+    def timestamp(self) -> dt.datetime:
+        return (
+            dt.datetime.fromtimestamp(
+                self.message.timing_metadata["simulated_timestamp"]
+            )
+            or self.message.created_at
+        )
+
+    @property
+    def conversation_id(self) -> uuid.UUID:
+        return self.message.conversation_id
