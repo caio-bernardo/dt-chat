@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
+import chromadb
 import typer
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
