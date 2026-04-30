@@ -84,26 +84,26 @@ class Message(MessageBase, table=True):
 class MessagePublic(MessageBase):
     """Public view of a Message"""
 
-    id: int
+    id: uuid.UUID
     created_at: dt.datetime
 
 
 class MessagePublicWithConversation(MessageBase):
     """Public Message Without Conversation data"""
 
-    id: int
+    id: uuid.UUID
     created_at: dt.datetime
     conversation: ConversationPublic
 
 
 class MessagePublicWithParent(MessageBase):
-    id: int
+    id: uuid.UUID
     created_at: dt.datetime
     parent: Optional[MessagePublicWithConversation] = None
 
 
 class MessagePublicComplete(MessageBase):
-    id: int
+    id: uuid.UUID
     created_at: dt.datetime
     conversation: ConversationPublic
     parent: Optional[MessagePublicWithConversation] = None

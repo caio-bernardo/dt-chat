@@ -3,10 +3,6 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from timesim import TimingMetadata
-
 from bancobot.models import (
     Conversation,
     ConversationPublic,
@@ -14,6 +10,9 @@ from bancobot.models import (
 )
 from bancobot.routes import router
 from bancobot.services import BancoBotService
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from timesim import TimingMetadata
 
 
 def create_test_timing_metadata() -> TimingMetadata:
@@ -27,7 +26,7 @@ def create_test_timing_metadata() -> TimingMetadata:
 
 
 def create_message_response(
-    conversation: Conversation, msg_id: int, content: str, msg_type: MessageType
+    conversation: Conversation, msg_id: uuid.UUID, content: str, msg_type: MessageType
 ):
     """Helper to create a MessagePublicComplete for API responses."""
     from bancobot.models import MessagePublicComplete
@@ -231,7 +230,7 @@ class TestCreateMessageEndpoint:
     def test_create_message_success(self, app, conversation):
         """Test creating a new message."""
         msg_response = create_message_response(
-            conversation, 1, "Test response", MessageType.AI
+            conversation, uuid.UUID(int=1), "Test response", MessageType.AI
         )
 
         mock_service = MagicMock(spec=BancoBotService)
@@ -300,8 +299,12 @@ class TestFetchMessagesEndpoint:
     def test_fetch_messages_multiple(self, app, conversation):
         """Test fetching multiple messages."""
         messages = [
-            create_message_response(conversation, 1, "Message 1", MessageType.Human),
-            create_message_response(conversation, 2, "Message 2", MessageType.AI),
+            create_message_response(
+                conversation, uuid.UUID(int=1), "Message 1", MessageType.Human
+            ),
+            create_message_response(
+                conversation, uuid.UUID(int=2), "Message 2", MessageType.AI
+            ),
         ]
 
         mock_service = MagicMock(spec=BancoBotService)
