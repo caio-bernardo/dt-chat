@@ -36,10 +36,3 @@ fork = "uv run --package fork-engine fork-engine"
 test-bancobot = "uv run --package bancobot pytest apps/bancobot/tests"
 test-classifier = "uv run --package classifier pytest apps/classifier/tests"
 test-fork = "uv run --package fork-engine pytest apps/fork-engine/tests"
-
-
-[tool.coverage.run]
-omit = [
-    "__init__.py",
-    "main.py"
-]
