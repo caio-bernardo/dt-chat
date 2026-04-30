@@ -75,7 +75,10 @@ class UserBot(ChatBotBase):
         query = initial_msg
 
         self.send_to_bot.create_channel(
-            {"persona": self.prompt_eng, "timesim": timesim_config.model_dump()}
+            {
+                "persona": self.prompt_eng,
+                "timesim": timesim_config.model_dump(mode="json"),
+            }
         )
 
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
@@ -154,7 +157,10 @@ class UserBot(ChatBotBase):
         query = initial_msg
 
         await self.asend_to_bot.create_channel(
-            {"persona": self.prompt_eng, "timesim": timesim_config.model_dump()}
+            {
+                "persona": self.prompt_eng,
+                "timesim": timesim_config.model_dump(mode="json"),
+            }
         )
 
         simulated_timestamp = dt.datetime.now() + timesim_config.temporal_offset
