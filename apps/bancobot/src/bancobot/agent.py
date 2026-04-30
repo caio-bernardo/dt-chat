@@ -1,5 +1,6 @@
 from typing import Sequence
 
+import chromadb
 from chatbot import BaseChatModel, BaseTool, ChatBotBase, Checkpointer, SystemMessage
 from chatbot.builder import ChatBotBuilder
 from langchain.agents.middleware import AgentMiddleware
@@ -64,6 +65,7 @@ def get_vector_store(persist_directory: str = "./chroma_db"):
         collection_name="banco_collection",
         embedding_function=embeddings,
         persist_directory=persist_directory,
+        client=chromadb.EphemeralClient(),
     )
 
 

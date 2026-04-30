@@ -9,6 +9,7 @@
 #     "langchain-text-splitters",
 #     "python-dotenv",
 #     "typer>=0.19.2",
+#     "chromadb",
 # ]
 # ///
 
@@ -104,6 +105,7 @@ def main(
         collection_name=collection_name,
         embedding_function=embeddings,
         persist_directory=persist_dir,
+        client=chromadb.EphemeralClient(),
     )
 
     _ = vector_store.add_documents(documents=clean_docs)
