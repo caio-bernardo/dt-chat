@@ -9,6 +9,7 @@
 #     "langchain-text-splitters",
 #     "python-dotenv",
 #     "typer>=0.19.2",
+#     "chromadb",
 # ]
 # ///
 
@@ -17,6 +18,7 @@ import json
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
+import chromadb
 import typer
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
@@ -104,6 +106,7 @@ def main(
         collection_name=collection_name,
         embedding_function=embeddings,
         persist_directory=persist_dir,
+        client=chromadb.EphemeralClient(),
     )
 
     _ = vector_store.add_documents(documents=clean_docs)

@@ -225,6 +225,7 @@ version = "0.2.0"
 source = { editable = "apps/bancobot" }
 dependencies = [
     { name = "chatbot" },
+    { name = "chromadb" },
     { name = "fastapi", extra = ["all"] },
     { name = "langchain" },
     { name = "langchain-chroma" },
@@ -233,8 +234,6 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langchain-text-splitters" },
     { name = "pubsub" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
     { name = "redis" },
     { name = "sqlmodel" },
     { name = "timesim" },
@@ -242,12 +241,15 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chatbot", editable = "libs/chatbot" },
+    { name = "chromadb", specifier = ">=1.3.7" },
     { name = "fastapi", extras = ["all"], specifier = ">=0.123.9" },
     { name = "langchain", specifier = ">=1.1.0" },
     { name = "langchain-chroma", specifier = ">=1.0.0" },
@@ -256,15 +258,17 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=1.1.0" },
     { name = "langchain-text-splitters", specifier = ">=1.0.0" },
     { name = "pubsub", editable = "libs/pubsub" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "redis", specifier = ">=7.1.0" },
     { name = "sqlmodel", specifier = ">=0.0.27" },
     { name = "timesim", editable = "libs/timesim" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.6" }]
+dev = [
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-asyncio", specifier = ">=0.23.0" },
+    { name = "ruff", specifier = ">=0.14.6" },
+]
 
 [[package]]
 name = "bcrypt"
@@ -5018,7 +5022,7 @@ wheels = [
 
 [[package]]
 name = "userbot"
-version = "0.1.1"
+version = "0.2.0"
 source = { editable = "libs/userbot" }
 dependencies = [
     { name = "chatbot" },

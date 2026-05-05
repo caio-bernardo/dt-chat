@@ -164,7 +164,7 @@ class TestMessage:
         assert msg.timing_metadata == timing_metadata
 
     def test_message_with_parent_message_id(self, conversation):
-        parent_id = uuid.uuid4()
+        parent_id = uuid.UUID(int=1)
         msg = Message(
             conversation_id=conversation.id,
             content="Reply to parent",
@@ -178,21 +178,22 @@ class TestMessagePublic:
     """Test MessagePublic model."""
 
     def test_message_public_creation(self, conversation):
+        fake_id = uuid.UUID(int=1)
         msg = MessagePublic(
-            id=1,
+            id=fake_id,
             conversation_id=conversation.id,
             content="Public message",
             type=MessageType.AI,
             created_at=dt.datetime.now(),
         )
-        assert msg.id == 1
+        assert msg.id == fake_id
         assert msg.content == "Public message"
         assert msg.type == MessageType.AI
 
     def test_message_public_with_parent_message_id(self, conversation):
         parent_id = uuid.uuid4()
         msg = MessagePublic(
-            id=1,
+            id=uuid.UUID(int=1),
             conversation_id=conversation.id,
             content="Public message with parent",
             type=MessageType.Human,
@@ -206,8 +207,9 @@ class TestMessagePublicWithConversation:
     """Test MessagePublicWithConversation model."""
 
     def test_message_public_with_conversation(self, conversation):
+        fake_id = uuid.UUID(int=1)
         msg = MessagePublicWithConversation(
-            id=1,
+            id=fake_id,
             conversation_id=conversation.id,
             content="Test",
             type=MessageType.Human,
@@ -218,7 +220,7 @@ class TestMessagePublicWithConversation:
                 created_at=conversation.created_at,
             ),
         )
-        assert msg.id == 1
+        assert msg.id == fake_id
         assert msg.conversation_id == conversation.id
         assert hasattr(msg, "conversation")
 
@@ -227,20 +229,21 @@ class TestMessagePublicWithParent:
     """Test MessagePublicWithParent model."""
 
     def test_message_public_with_parent_no_parent(self, conversation):
+        fake_id = uuid.UUID(int=1)
         msg = MessagePublicWithParent(
-            id=1,
+            id=fake_id,
             conversation_id=conversation.id,
             content="First message",
             type=MessageType.Human,
             created_at=dt.datetime.now(),
             parent=None,
         )
-        assert msg.id == 1
+        assert msg.id == fake_id
         assert msg.parent is None
 
     def test_message_public_with_parent_with_parent(self, conversation):
         parent_msg = MessagePublicWithConversation(
-            id=1,
+            id=uuid.UUID(int=1),
             conversation_id=conversation.id,
             content="Parent message",
             type=MessageType.Human,
@@ -252,16 +255,16 @@ class TestMessagePublicWithParent:
             ),
         )
         msg = MessagePublicWithParent(
-            id=2,
+            id=uuid.UUID(int=2),
             conversation_id=conversation.id,
             content="Child message",
             type=MessageType.AI,
             created_at=dt.datetime.now(),
             parent=parent_msg,
         )
-        assert msg.id == 2
+        assert msg.id == uuid.UUID(int=2)
         assert msg.parent is not None
-        assert msg.parent.id == 1
+        assert msg.parent.id == uuid.UUID(int=1)
 
 
 class TestMessagePublicComplete:
@@ -269,7 +272,7 @@ class TestMessagePublicComplete:
 
     def test_message_public_complete_creation(self, conversation):
         msg = MessagePublicComplete(
-            id=1,
+            id=uuid.UUID(int=1),
             conversation_id=conversation.id,
             content="Complete message",
             type=MessageType.Human,
@@ -281,7 +284,7 @@ class TestMessagePublicComplete:
             ),
             parent=None,
         )
-        assert msg.id == 1
+        assert msg.id == uuid.UUID(int=1)
         assert msg.conversation_id == conversation.id
         assert msg.type == MessageType.Human
         assert hasattr(msg, "conversation")
@@ -289,7 +292,7 @@ class TestMessagePublicComplete:
 
     def test_message_public_complete_with_parent(self, conversation, timing_metadata):
         parent_msg = MessagePublicWithConversation(
-            id=1,
+            id=uuid.UUID(int=1),
             conversation_id=conversation.id,
             content="Parent",
             type=MessageType.Human,
@@ -302,7 +305,7 @@ class TestMessagePublicComplete:
             ),
         )
         msg = MessagePublicComplete(
-            id=2,
+            id=uuid.UUID(int=2),
             conversation_id=conversation.id,
             content="Child message",
             type=MessageType.AI,

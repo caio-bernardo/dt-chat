@@ -7,7 +7,7 @@
 #     "python-dotenv>=1.2.1",
 #     "requests>=2.32.5",
 #     "typer>=0.21.1",
-#     "userbot",
+#     "userbot>=0.3.0",
 # ]
 #
 # [tool.uv.sources]
@@ -45,7 +45,6 @@ import requests
 import typer
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
-
 from userbot import (
     AIMessage,
     HumanMessage,

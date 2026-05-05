@@ -30,7 +30,7 @@ class TimeSimulationConfig(BaseModel):
     typing_speed_wpm: float = 40.0
     thinking_time_range: tuple[int, int] = (2, 10)
     pause_probability: float = 0.05
-    pause_time_range: tuple = (60, 3600)
+    pause_time_range: tuple[float, float] = (60.0, 3600.0)
     simulate_delays: bool = False
 
     def get_thinking_time(self) -> dt.timedelta:
@@ -52,4 +52,4 @@ class TimeSimulationConfig(BaseModel):
 
     def get_pause_time(self) -> dt.timedelta:
         """Gera um tempo de pausa aleatorio dentro de `pause_time_range`."""
-        return dt.timedelta(seconds=random.randint(*self.pause_time_range))
+        return dt.timedelta(seconds=random.uniform(*self.pause_time_range))

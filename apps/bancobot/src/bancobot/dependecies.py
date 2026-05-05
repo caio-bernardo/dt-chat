@@ -3,8 +3,6 @@ from typing import Annotated
 
 from chatbot import Checkpointer
 from fastapi import Depends
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 from langgraph.checkpoint.memory import InMemorySaver
 from pubsub.redis import RedisQueueProducer
 from sqlmodel import Session
@@ -16,24 +14,9 @@ from .agent import BancoAgent
 from .services import BancoBotService
 
 
-def get_embeddings():
-    """Returns model to create text embeddings"""
-    return OpenAIEmbeddings(model="text-embedding-3-large")
-
-
-def get_vector_store(persist_directory: str = "./chroma_db"):
-    """Returns a vector store"""
-    embeddings = get_embeddings()
-    return Chroma(
-        collection_name="banco_collection",
-        embedding_function=embeddings,
-        persist_directory=persist_directory,
-    )
-
-
 def get_search_tool():
     """Returns a search tool that operates over a vector store"""
-    vector_store = get_vector_store()
+    vector_store = bancobot.agent.get_vector_store()
     return bancobot.agent.make_search_documentation_tool(vector_store)
 
 
