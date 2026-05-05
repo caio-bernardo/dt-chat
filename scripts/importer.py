@@ -6,6 +6,7 @@
 #     "timesim",
 #     "sqlmodel>=0.0.38",
 #     "typer>=0.21.2",
+#     "pandas>=3.0.2",
 # ]
 #
 # [tool.uv.sources]
@@ -19,6 +20,7 @@ import random
 import uuid
 from typing import Dict, Optional
 
+import pandas as pd
 import typer
 from sqlmodel import (
     JSON,
@@ -156,13 +158,16 @@ def calculate_temporal_offset(data):
 
 
 def main(
-    input_file_path: str, db_conn: str = "sqlite:///messages.db", quiet: bool = False
+    input_file_path: str,
+    db_conn: str = "sqlite:///messages.db",
+    quiet: bool = False,
+    save: bool = True,
 ) -> None:
     """
-    Import conversations and touchpoints from json files into a SQL database.
+    Import conversations a json files into a SQL database.
     """
     if not quiet:
-        print("Initializing export")
+        print("[INFO] Initializing export")
     try:
         engine = create_engine(db_conn)
         SQLModel.metadata.create_all(engine)
@@ -182,7 +187,7 @@ def main(
         conversation = Conversation.model_validate(props)
 
         if not quiet:
-            print(f"Adding Conversation: {conversation}")
+            print(f"[INFO] Add Conversation: {conversation}")
         session.add(conversation)
 
         # DONE: iterate over messages
@@ -219,14 +224,16 @@ def main(
 
             msg = Message.model_validate(props)
             if not quiet:
-                print(f"Adding Message: {msg}")
+                print(f"[INFO] Add Message: {msg}")
             session.add(msg)
             previous_message_id = msg.id
 
         # DONE: save everything on the database
-        session.commit()
+        if save:
+            session.commit()
+
     except Exception as err:
-        print(f"ERROR: {str(err)}")
+        print(f"[ERROR]: {err}")
         raise err
 
 
