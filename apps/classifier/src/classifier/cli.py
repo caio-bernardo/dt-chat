@@ -31,7 +31,7 @@ def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
 
 
 def get_redis() -> Redis:
-    return Redis()
+    return Redis(port=int(os.environ["REDIS_PORT"]))
 
 
 def load_tp_list(path: str) -> list[str]:
@@ -145,7 +145,7 @@ def run(
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = "sqlite:///touchpoints.db",
-    model: str = "gpt-4.1",
+    model: str = "gpt-5",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).

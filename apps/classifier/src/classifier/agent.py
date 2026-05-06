@@ -34,5 +34,5 @@ class ClassifierAgent:
         response = await self.agent.ainvoke(prompt)
         category = str(response.content).strip().strip("'").strip('"').upper()
         if category not in categories:
-            raise ValueError("Produced Invalid Category.")
+            raise ValueError(f"Produced Invalid Category: {category}")
         return category

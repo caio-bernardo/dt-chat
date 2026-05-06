@@ -1,9 +1,12 @@
+import os
+
 from bancobot.agent import (
     BancoAgentBuilder,
     get_vector_store,
     make_search_documentation_tool,
 )
 from classifier.models import Touchpoint
+from dotenv import load_dotenv
 from langchain.agents.middleware import ModelRequest, dynamic_prompt
 from pubsub.redis import RedisQueueConsumer, RedisQueueProducer
 from redis.asyncio import Redis
@@ -16,6 +19,8 @@ from fork_engine.helpers import (
     retrieve_timesim_from_metadata,
     retrieve_userbot_persona_from_metadata,
 )
+
+load_dotenv()
 
 
 @dynamic_prompt
@@ -106,7 +111,7 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
 async def amain():
     print("[INFO]: Initializing Fork Engine...")
 
-    redis = Redis()
+    redis = Redis(port=int(os.environ["REDIS_PORT"]))
     consumer = RedisQueueConsumer(redis)
     producer = RedisQueueProducer(redis)
     engine = ForkEngine(consumer, producer)
