@@ -1,0 +1,7 @@
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "${REDIS_PORT}:6379"
+    environment:
+      REDIS_PORT: ${REDIS_PORT}
