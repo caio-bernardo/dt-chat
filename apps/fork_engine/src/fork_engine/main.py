@@ -65,8 +65,10 @@ def on_transbordo(data: Touchpoint) -> ForkConfig:
         parent_conversation=data.message.conversation_id,
         bancobot_builder=bancobot,
         userbot_builder=userbot,
+        branched_message_id=data.message.id,
         next_msg="",
         timesim=timesim,
+        label="2-step-rag",
     )
 
 
@@ -101,10 +103,12 @@ def on_reclamacao(data: Touchpoint) -> ForkConfig:
         parent_conversation=data.message.conversation_id,
         bancobot_builder=bancobot,
         userbot_builder=userbot,
+        branched_message_id=data.message.id,
         next_msg=str(
             conversation[-3].content
         ),  # re-ask the message before the touchpoint
         timesim=timesim,
+        label="default",
     )
 
 

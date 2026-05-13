@@ -86,13 +86,17 @@ class BancobotProcedureCallSender(IAsyncMessageSender):
         agent: BancoAgent,
         storage: Session,
         producer: IPublisher,
+        metadata: Dict | None = None,
     ):
         self.parent_conversation_id = parent_id
         self.conversation_id = None
         self._service = BancoBotService(agent, storage, producer)
         self._service.source = "twin_bancobot"
+        self._metadata = metadata
 
     async def create_channel(self, data: Dict | None = None):
+        if self._metadata and data:
+            data.update(self._metadata)
         props = ConversationCreate.model_validate(
             {"meta": data or {}, "parent_conversation_id": self.parent_conversation_id}
         )
