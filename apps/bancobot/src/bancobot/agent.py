@@ -58,11 +58,13 @@ def get_embeddings():
     return OpenAIEmbeddings(model="text-embedding-3-large")
 
 
-def get_vector_store(persist_directory: str = "./chroma_db"):
+def get_vector_store(
+    collection: str = "banco_collection", persist_directory: str = "./chroma_db"
+):
     """Returns a vector store"""
     embeddings = get_embeddings()
     return Chroma(
-        collection_name="banco_collection",
+        collection_name=collection,
         embedding_function=embeddings,
         persist_directory=persist_directory,
         client=chromadb.EphemeralClient(),
