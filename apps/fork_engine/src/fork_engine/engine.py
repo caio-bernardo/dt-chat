@@ -56,9 +56,9 @@ class ForkEngine:
         self._storage = get_session(engine)
         self.queue = queue
         self.queue_prod = queue_prod
-        self.conditions: dict[str, ConditionCallback] = {}
+        self.conditions: dict[str, list[ConditionCallback]] = {}
 
-    def create_condition(self, activity: str, callback: ConditionCallback):
+    def create_condition(self, activity: str, callback: list[ConditionCallback]):
         """Create a new condition to spawn forks, if activity becomes true the callback is called."""
         self.conditions[activity] = callback
 
@@ -71,11 +71,11 @@ class ForkEngine:
 
                 tp = Touchpoint.model_validate(data["content"])
                 print(f"DEBUG: reads {tp}")
-                # if there is a registered callback for an activity
-                # calls the callback and gets the config to spawn a new fork in a different process
+                # if there is any registered callback for an activity
+                # calls the callbacks and gets the config to spawn a new fork in a different process
                 # inspired by neovim `nvim.create_augroup()`.
-                callback = self.conditions.get(tp.activity)
-                if callback:
+                callbacks = self.conditions.get(tp.activity) or []
+                for callback in callbacks:
                     config = callback(tp)
                     t = Process(target=self.fork, args=(config,))
                     threads.append(t)
