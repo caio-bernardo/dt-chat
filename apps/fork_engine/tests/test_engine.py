@@ -2,7 +2,6 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from fork_engine.engine import ForkEngine
 
 
@@ -28,10 +27,10 @@ class TestConditionManagement:
 
         activity = "TEST_ACTIVITY"
 
-        fork_engine.create_condition(activity, callback)
+        fork_engine.create_condition(activity, [callback])
 
         assert activity in fork_engine.conditions
-        assert fork_engine.conditions[activity] == callback
+        assert fork_engine.conditions[activity] == [callback]
 
     def test_create_multiple_conditions(self, fork_engine, fork_config):
         """Test creating multiple conditions."""
@@ -42,8 +41,8 @@ class TestConditionManagement:
         def callback2(tp):
             return fork_config
 
-        fork_engine.create_condition("ACTIVITY_1", callback1)
-        fork_engine.create_condition("ACTIVITY_2", callback2)
+        fork_engine.create_condition("ACTIVITY_1", [callback1])
+        fork_engine.create_condition("ACTIVITY_2", [callback2])
 
         assert len(fork_engine.conditions) == 2
         assert "ACTIVITY_1" in fork_engine.conditions
@@ -57,10 +56,11 @@ class TestConditionManagement:
             called_with.append(tp)
             return fork_config
 
-        fork_engine.create_condition(touchpoint.activity, callback)
+        fork_engine.create_condition(touchpoint.activity, [callback])
 
         # Invoke callback
-        result = fork_engine.conditions[touchpoint.activity](touchpoint)
+        callbacks = fork_engine.conditions[touchpoint.activity]
+        result = callbacks[0](touchpoint)
 
         assert len(called_with) == 1
         assert called_with[0] == touchpoint
@@ -106,12 +106,12 @@ class TestForkExecution:
         self, mock_bancobot_builder, mock_userbot_builder
     ):
         """Test fork with default TimeSimulationConfig."""
-        from userbot import TimeSimulationConfig
-
         from fork_engine.engine import ForkConfig
+        from userbot import TimeSimulationConfig
 
         config = ForkConfig(
             parent_conversation=uuid.uuid4(),
+            branched_message_id=uuid.uuid4(),
             bancobot_builder=mock_bancobot_builder,
             userbot_builder=mock_userbot_builder,
             next_msg="Hi",
@@ -119,6 +119,27 @@ class TestForkExecution:
 
         assert config.iterations == 15
         assert isinstance(config.timesim, TimeSimulationConfig)
+
+
+class TestMultipleCallbacks:
+    """Test multiple callbacks per condition."""
+
+    def test_create_condition_with_multiple_callbacks(self, fork_engine, fork_config):
+        """Test creating condition with multiple callbacks."""
+
+        def callback1(tp):
+            return fork_config
+
+        def callback2(tp):
+            return fork_config
+
+        activity = "TEST_ACTIVITY"
+        fork_engine.create_condition(activity, [callback1, callback2])
+
+        assert activity in fork_engine.conditions
+        assert len(fork_engine.conditions[activity]) == 2
+        assert fork_engine.conditions[activity][0] == callback1
+        assert fork_engine.conditions[activity][1] == callback2
 
 
 class TestWatcherBasics:

@@ -84,6 +84,7 @@ def fork_config(mock_bancobot_builder, mock_userbot_builder):
     """Create a sample ForkConfig."""
     return ForkConfig(
         parent_conversation=uuid.uuid4(),
+        branched_message_id=uuid.uuid4(),
         bancobot_builder=mock_bancobot_builder,
         userbot_builder=mock_userbot_builder,
         next_msg="Test message",

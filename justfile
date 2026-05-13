@@ -40,11 +40,11 @@ exporter:
 
 # Run Fork Engine
 forker:
-    uv run --package fork-engine forker-engine
+    uv run --package fork-engine forker_engine
 
 # Run Fork Engine tests
 forker-test:
-    uv run --package fork-engine pytest apps/fork-engine/tests
+    uv run --package fork-engine pytest apps/fork_engine/tests
 
 # Run Fork Engine tests with coverage
 forker-test-cov:

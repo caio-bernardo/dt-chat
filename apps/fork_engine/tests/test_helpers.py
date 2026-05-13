@@ -96,10 +96,54 @@ class TestBancobotProcedureCallSender:
         assert sender.parent_conversation_id is not None
         assert sender.conversation_id is None
         assert sender._service is not None
+        assert sender._metadata is None
+
+    def test_init_with_metadata(self, mock_bancobot_agent, db_session, mock_queue_prod):
+        """Test BancobotProcedureCallSender initialization with metadata."""
+        metadata = {"branched_message_id": "123", "twinbot_type": "test"}
+        sender = BancobotProcedureCallSender(
+            parent_id=uuid.uuid4(),
+            agent=mock_bancobot_agent,
+            storage=db_session,
+            producer=mock_queue_prod,
+            metadata=metadata,
+        )
+        assert sender._metadata == metadata
 
     def test_service_source_set(self, sender):
         """Test that service source is set to twin_bancobot."""
         assert sender._service.source == "twin_bancobot"
+
+    @pytest.mark.asyncio
+    async def test_create_channel_merges_metadata(
+        self, mock_bancobot_agent, db_session, mock_queue_prod
+    ):
+        """Test that create_channel merges metadata with data."""
+        metadata = {"branched_message_id": "123", "twinbot_type": "test"}
+        sender = BancobotProcedureCallSender(
+            parent_id=uuid.uuid4(),
+            agent=mock_bancobot_agent,
+            storage=db_session,
+            producer=mock_queue_prod,
+            metadata=metadata,
+        )
+        data = {"custom_field": "value"}
+
+        with patch.object(
+            sender._service, "create_session", new_callable=AsyncMock
+        ) as mock_create:
+            mock_conv = MagicMock()
+            mock_conv.id = uuid.uuid4()
+            mock_create.return_value = mock_conv
+
+            await sender.create_channel(data)
+
+            # Verify metadata was merged into the call
+            call_args = mock_create.call_args
+            props = call_args[0][0]
+            assert props.meta["branched_message_id"] == "123"
+            assert props.meta["twinbot_type"] == "test"
+            assert props.meta["custom_field"] == "value"
 
     @pytest.mark.asyncio
     async def test_create_channel(self, sender, db_session):
@@ -160,3 +204,31 @@ class TestBancobotProcedureCallSender:
             assert isinstance(result, AIMessage)
             assert result.content == "Response"
             mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_channel_without_metadata(
+        self, mock_bancobot_agent, db_session, mock_queue_prod
+    ):
+        """Test creating a channel without metadata."""
+        sender = BancobotProcedureCallSender(
+            parent_id=uuid.uuid4(),
+            agent=mock_bancobot_agent,
+            storage=db_session,
+            producer=mock_queue_prod,
+        )
+        data = {"custom_field": "value"}
+
+        with patch.object(
+            sender._service, "create_session", new_callable=AsyncMock
+        ) as mock_create:
+            mock_conv = MagicMock()
+            mock_conv.id = uuid.uuid4()
+            mock_create.return_value = mock_conv
+
+            await sender.create_channel(data)
+
+            assert sender.conversation_id == mock_conv.id
+            # Verify data was passed correctly
+            call_args = mock_create.call_args
+            props = call_args[0][0]
+            assert props.meta["custom_field"] == "value"

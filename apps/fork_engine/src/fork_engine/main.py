@@ -73,7 +73,7 @@ def on_transbordo(data: Touchpoint) -> ForkConfig:
 
 
 # EXEMPLO:
-def on_reclamacao(data: Touchpoint) -> ForkConfig:
+def default(data: Touchpoint) -> ForkConfig:
     bancobot = BancoAgentBuilder()
     # bancobot.prompt = "Você um assistente virtual muito gentil" # exemplo de mudança de engenharia de prompt
     bancobot.toolkit = [make_search_documentation_tool(get_vector_store())]
@@ -121,7 +121,7 @@ async def amain():
     engine = ForkEngine(consumer, producer)
 
     print("[INFO]: Setting up fork conditions...")
-    engine.create_condition("FINALIZAÇÃO COM RECLAMAÇÃO", on_reclamacao)
-    # engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", on_transbordo)
+    # engine.create_condition("FINALIZAÇÃO COM RECLAMAÇÃO", on_reclamacao)
+    engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", [on_transbordo, default])
     print("[INFO]: Listening for new messages ...")
     await engine.awatch()
