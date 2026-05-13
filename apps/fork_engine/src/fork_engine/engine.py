@@ -27,10 +27,12 @@ class ForkConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     parent_conversation: uuid.UUID
+    branched_message_id: uuid.UUID
     bancobot_builder: BancoAgentBuilder
     userbot_builder: UserBotBuilder
     next_msg: str
     timesim: TimeSimulationConfig = TimeSimulationConfig()
+    label: str = ""
     iterations: int = 15
 
 
@@ -98,8 +100,16 @@ class ForkEngine:
         # create a service that can use bancoagent and publish the messages back to the classifier
         # + Generates a new session connection for this fork, so each fork has a
         # database connection that will be closed on exit.
+        metadata = {
+            "branched_message_id": str(config.branched_message_id),
+            "twinbot_type": config.label,
+        }
         config.userbot_builder.asender = BancobotProcedureCallSender(
-            config.parent_conversation, bancobot, next(self._storage), self.queue_prod
+            config.parent_conversation,
+            bancobot,
+            next(self._storage),
+            self.queue_prod,
+            metadata,
         )
 
         # execute the userbot
