@@ -1,5 +1,6 @@
 services:
   redis:
+    container_name: dtchat-redis
     image: redis:latest
     ports:
       - "${REDIS_PORT}:6379"
