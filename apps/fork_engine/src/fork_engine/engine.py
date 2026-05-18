@@ -65,8 +65,8 @@ class ForkEngine:
     async def awatch(self):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
         threads: list[Process] = []
-        while True:
-            try:
+        try:
+            while True:
                 data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
 
                 tp = Touchpoint.model_validate(data["content"])
@@ -80,15 +80,17 @@ class ForkEngine:
                     t = Process(target=self.fork, args=(config,))
                     threads.append(t)
                     t.start()
-            except Exception as e:
-                print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
-            finally:
-                # Close queue and wait for forks to finish
-                print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
-                await self.queue.unsubscribe("tp_channel")
-                for t in threads:
-                    t.join()
-                break
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+        finally:
+            # Close queue and wait for forks to finish
+            print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
+            await self.queue.unsubscribe("tp_channel")
+            for t in threads:
+                t.join()
 
     async def fork(self, config: ForkConfig):
         print(
