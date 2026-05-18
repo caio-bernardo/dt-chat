@@ -42,7 +42,7 @@ def load_tp_list(path: str) -> list[str]:
 
 @app.command(name="export")
 def export_command(
-    file_output: str = "output.csv", db_path: str = "sqlite:///touchpoints.db"
+    file_output: str = "output.csv", db_path: str = "sqlite:///db/touchpoints.db"
 ):
     """Export touchpoints to a csv file, retrieve touchpoints from `db_path`.
 
@@ -118,7 +118,7 @@ async def arun(config: ClassifierConfig):
             # INFO: we do not repass messages comming from the fork, or else we
             # may have a recursive explosion of messages made by the forkers
             # causing more forks
-            if config.stream and data["origin"] == "bancobot":
+            if config.stream and data["origin"] != "twin_bancobot":
                 payload: QueueMessage = {
                     "origin": "classifier",
                     "model_type": "touchpoint",
@@ -145,7 +145,7 @@ def run(
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = "sqlite:///touchpoints.db",
-    model: str = "gpt-5",
+    model: str = "gpt-4.1-mini",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).
