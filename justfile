@@ -40,7 +40,7 @@ exporter:
 
 # Run Fork Engine
 forker:
-    uv run --package fork-engine forker_engine
+    uv run --package fork-engine fork-engine
 
 # Run Fork Engine tests
 forker-test:
