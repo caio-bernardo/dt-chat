@@ -205,7 +205,7 @@ async def injects_conversation(
         except Exception as e:
             print(f"FAILURE: {str(e)}")
 
-    print(f"Finished, injected {sum} messages of {len(conversations)}")
+    print(f"Finished, injected {sum} messages of {len(conversations)} conversations.")
 
 
 async def injects_touchpoints(
