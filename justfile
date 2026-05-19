@@ -79,3 +79,7 @@ import-dir DIR:
         scripts/importer.py $file --quiet --publish --redis-queue-key=$MSG_CHANNEL --redis-url=redis://localhost:$REDIS_PORT
         echo Finished $file
     done
+
+# injects messages on the classifier
+inject-messages:
+    scripts/injector.py sqlite:///db/messages.db msg_channel
