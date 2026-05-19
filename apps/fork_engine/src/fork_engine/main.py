@@ -1,5 +1,6 @@
 import os
 
+from bancobot.agent import BancoAgentBuilder
 from classifier.models import Touchpoint
 from dotenv import load_dotenv
 from pubsub.redis import RedisQueueConsumer, RedisQueueProducer
@@ -10,6 +11,7 @@ from fork_engine import twinbots
 from fork_engine.engine import ForkConfig, ForkEngine
 from fork_engine.helpers import (
     convert_conversation_to_langchain_types,
+    retrieve_messages_until,
     retrieve_timesim_from_metadata,
     retrieve_userbot_persona_from_metadata,
 )
@@ -17,85 +19,55 @@ from fork_engine.helpers import (
 load_dotenv()
 
 
-def insatisfaction(data: Touchpoint) -> ForkConfig:
-    bancobot = twinbots.two_step_rag()
-
-    # Gets the persona and timesim from the original conversation
+def create_config(data: Touchpoint, bot: BancoAgentBuilder, label: str) -> ForkConfig:
+    """Creates a ForkConfig for the given data and bot, with the given label.
+    Inserts previous messages of the conversation
+    """
     meta = data.message.conversation.meta
-
-    # Userbot builder
     userbot = UserBotBuilder()
     userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
-    # put messages from the conversation on the userbot
-    conversation = convert_conversation_to_langchain_types(
-        data.message.conversation.messages
+
+    previous_messages = convert_conversation_to_langchain_types(
+        retrieve_messages_until(data.message_id)
     )
-    # print(f"[DEBUG]: {conversation}")
-    # pass history of conversation if we have at least 4 messages
-    # because -1 is the touchpoint, -2 is the answer that "caused" the
-    # touchpoint, and -3 will be reasked (or modified) in the next step to see
-    # if we can avoid the touchpoint
-    if len(conversation) < 4:
+
+    # This touchpoint is only produced by humans, so If the message is at the
+    # begining (max position 2) then we are begin the conversation from the
+    # start
+    if len(previous_messages) < 4:
+        next_msg = "Olá"
         userbot.initial_messages = []
     else:
-        userbot.initial_messages = conversation[:-4]  # last message that caused
+        # Else reask the previous question
+        next_msg = previous_messages[-3].content
+        userbot.initial_messages = previous_messages[:-3]
 
-    # retrieve the time config from the conversation
     timesim = retrieve_timesim_from_metadata(meta)
-
     return ForkConfig(
         parent_conversation=data.message.conversation_id,
-        bancobot_builder=bancobot,
+        bancobot_builder=bot,
         userbot_builder=userbot,
         branched_message_id=data.message.id,
-        next_msg=str(
-            conversation[-3].content
-        ),  # re-ask the message before the touchpoint
+        next_msg=str(next_msg),  # re-ask the message before the touchpoint
         timesim=timesim,
-        label="two-steps",
+        label=label,
     )
+
+
+def two_steps(data: Touchpoint) -> ForkConfig:
+    bancobot = twinbots.two_step_rag()
+    return create_config(data, bancobot, "two-step")
+
+
+def triple_rag(data: Touchpoint) -> ForkConfig:
+    bancobot = twinbots.triple_rag_tool()
+    return create_config(data, bancobot, "triple-rag")
 
 
 # EXEMPLO:
 def default(data: Touchpoint) -> ForkConfig:
     bancobot = twinbots.single_rag_tool()
-
-    # Gets the persona and timesim from the original conversation
-    meta = data.message.conversation.meta
-
-    # Userbot builder
-    userbot = UserBotBuilder()
-    userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
-    # put messages from the conversation on the userbot
-    conversation = convert_conversation_to_langchain_types(
-        data.message.conversation.messages
-    )
-    # print(f"[DEBUG]: {conversation}")
-    # pass history of conversation if we have at least 4 messages
-    # because -1 is the touchpoint, -2 is the answer that "caused" the
-    # touchpoint, and -3 will be reasked (or modified) in the next step to see
-    # if we can avoid the touchpoint
-    if len(conversation) < 4:
-        userbot.initial_messages = []
-    else:
-        userbot.initial_messages = conversation[:-4]  # last message that caused
-
-    # retrieve the time config from the conversation
-    timesim = retrieve_timesim_from_metadata(meta)
-
-    print(f"DEBUG: {timesim}")
-
-    return ForkConfig(
-        parent_conversation=data.message.conversation_id,
-        bancobot_builder=bancobot,
-        userbot_builder=userbot,
-        branched_message_id=data.message.id,
-        next_msg=str(
-            conversation[-3].content
-        ),  # re-ask the message before the touchpoint
-        timesim=timesim,
-        label="default",
-    )
+    return create_config(data, bancobot, "default")
 
 
 async def amain():
@@ -107,7 +79,8 @@ async def amain():
     engine = ForkEngine(consumer, producer)
 
     print("[INFO]: Setting up fork conditions...")
-    engine.create_condition("RESPOSTA COM INSATISFAÇÃO", [default])
-    # engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", [on_transbordo, default])
+    engine.create_condition(
+        "SOLICITAÇÃO DIRETA DE HUMANO", [two_steps, triple_rag, default]
+    )
     print("[INFO]: Listening for new messages ...")
     await engine.awatch()
