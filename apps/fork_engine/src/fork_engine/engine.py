@@ -1,10 +1,8 @@
 import asyncio
 import datetime as dt
 import os
-import uuid
 from typing import Callable
 
-from bancobot.agent import BancoAgentBuilder
 from classifier.models import (  # Imports this ones for database creation
     Conversation,  # pyright: ignore[reportUnusedImport]  # noqa: F401
     Message,  # pyright: ignore[reportUnusedImport]  # noqa: F401
@@ -12,11 +10,10 @@ from classifier.models import (  # Imports this ones for database creation
 )
 from dotenv import load_dotenv
 from pubsub import IPublisher, ISubscriber, QueueMessage
-from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, SQLModel, create_engine
-from userbot import TimeSimulationConfig, UserBotBuilder
 
-from .helpers import BancobotProcedureCallSender
+from .config import ForkConfig
+from .procedure import BancobotProcedureCallSender
 
 load_dotenv()
 
@@ -25,22 +22,7 @@ TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
 TWIN_DATABASE_URL: str = os.environ["TWIN_DATABASE_URL"]
 
 
-class ForkConfig(BaseModel):
-    """Configuration of a Fork process. Allows to create a new conversation between a userbot and a bancobot, with specific values."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    parent_conversation: uuid.UUID
-    branched_message_id: uuid.UUID
-    bancobot_builder: BancoAgentBuilder
-    userbot_builder: UserBotBuilder
-    next_msg: str
-    timesim: TimeSimulationConfig = TimeSimulationConfig()
-    label: str = ""
-    iterations: int = 15
-
-
-ConditionCallback = Callable[[Touchpoint], ForkConfig]
+ConditionCallback = Callable[[Session, Touchpoint], ForkConfig]
 
 
 def get_session(engine):
@@ -92,7 +74,7 @@ class ForkEngine:
                     # inspired by neovim `nvim.create_augroup()`.
                     callbacks = self.conditions.get(tp.activity) or []
                     for callback in callbacks:
-                        config = callback(tp)
+                        config = callback(self._storage, tp)
                         # create new task
                         tg.create_task(self.fork(config))
                 except KeyboardInterrupt:
