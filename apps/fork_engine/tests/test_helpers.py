@@ -4,13 +4,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from bancobot.database import MessageType
 from bancobot.models import Message
+from chatbot import AIMessage, HumanMessage
 from fork_engine.helpers import (
-    BancobotProcedureCallSender,
     map_internal_2_langchain_message,
+    retrieve_messages_until,
     retrieve_timesim_from_metadata,
     retrieve_userbot_persona_from_metadata,
 )
-from langchain_core.messages import AIMessage, HumanMessage
+from fork_engine.procedure import BancobotProcedureCallSender
 from userbot import TimeSimulationConfig
 
 
@@ -42,6 +43,51 @@ class TestMessageMapping:
         result = map_internal_2_langchain_message(msg)
         assert isinstance(result, AIMessage)
         assert result.content == "Hi there"
+
+
+class TestRetrieveMessagesUntil:
+    def test_retrieve_messages_until_includes_target_and_orders(self, db_session):
+        import datetime as dt
+
+        from bancobot.models import Conversation, Message
+
+        conv = Conversation(id=uuid.uuid4(), meta={})  # pyright: ignore[reportArgumentType]
+        db_session.add(conv)
+        db_session.flush()
+
+        t0 = dt.datetime(2024, 1, 1, 12, 0, 0)
+        m1 = Message(
+            id=uuid.uuid4(),
+            conversation_id=conv.id,
+            type=MessageType.Human,
+            content="m1",
+            timing_metadata={},  # pyright: ignore[reportArgumentType]
+            created_at=t0,
+        )
+        m2 = Message(
+            id=uuid.uuid4(),
+            conversation_id=conv.id,
+            type=MessageType.Human,
+            content="m2",
+            timing_metadata={},  # pyright: ignore[reportArgumentType]
+            created_at=t0.replace(minute=1),
+        )
+        m3 = Message(
+            id=uuid.uuid4(),
+            conversation_id=conv.id,
+            type=MessageType.Human,
+            content="m3",
+            timing_metadata={},  # pyright: ignore[reportArgumentType]
+            created_at=t0.replace(minute=2),
+        )
+        db_session.add(m1)
+        db_session.add(m2)
+        db_session.add(m3)
+        db_session.flush()
+
+        res = retrieve_messages_until(db_session, m2)
+
+        assert [m.content for m in res] == ["m1", "m2"]
 
 
 class TestMetadataRetrieval:
@@ -189,14 +235,20 @@ class TestBancobotProcedureCallSender:
         """Test sending message successfully."""
         # Setup conversation
         sender.conversation_id = uuid.uuid4()
-        msg = HumanMessage(content="Hello", timing_metadata={"pause": 1})
+        timing_metadata = {
+            "simulated_timestamp": 1.0,
+            "typing_time": 0.1,
+            "thinking_time": 0.2,
+            "pause_time": 0.3,
+        }
+        msg = HumanMessage(content="Hello", timing_metadata=timing_metadata)
 
         with patch.object(
             sender._service, "save_publish_answer_message", new_callable=AsyncMock
         ) as mock_save:
             mock_answer = MagicMock()
             mock_answer.content = "Response"
-            mock_answer.timing_metadata = {"pause": 1}
+            mock_answer.timing_metadata = timing_metadata
             mock_save.return_value = mock_answer
 
             result = await sender.send_message(msg)

@@ -3,7 +3,7 @@ import uuid
 
 # Usado para criar a tabela Messages no lado do classificador
 from bancobot.models import (
-    Conversation,  # pyright: ignore[reportUnusedImport]
+    Conversation,  # pyright: ignore[reportUnusedImport]  # noqa: F401
     Message,
 )
 from sqlmodel import Field, Relationship, SQLModel

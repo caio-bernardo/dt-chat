@@ -48,7 +48,7 @@ forker-test:
 
 # Run Fork Engine tests with coverage
 forker-test-cov:
-    uv run --package fork-engine pytest apps/fork-engine/tests --cov=fork-engine --cov-report=term-missing
+    uv run --package fork-engine pytest apps/fork_engine/tests --cov=fork_engine --cov-report=term-missing
 
 ### Redis Cache ###
 

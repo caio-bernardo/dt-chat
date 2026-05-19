@@ -1,11 +1,18 @@
-import asyncio
+"""fork_engine package.
 
-from .main import amain
+Keep imports lightweight so unit tests can import submodules (e.g. `fork_engine.engine`)
+without pulling in runtime-only dependencies.
+"""
+
+import asyncio
 
 
 def main():
+    # Lazy import to avoid importing runtime wiring (redis, twinbots, env vars)
+    # during normal library usage and unit tests.
+    from .main import amain
+
     asyncio.run(amain())
 
 
-if __name__ == "__main__":
-    main()
+__all__ = ["main"]

@@ -1,11 +1,10 @@
-from select import select
 from typing import Sequence
 
 from bancobot.database import MessageType
 from bancobot.models import Message
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
-from sqlmodel import Session, col
+from sqlmodel import Session, col, select
 from userbot import TimeSimulationConfig
 
 load_dotenv()
@@ -52,7 +51,7 @@ def retrieve_messages_until(storage: Session, msg: Message) -> list[Message]:
     conv = storage.exec(
         select(Message)
         .where(Message.conversation_id == msg.conversation_id)
+        .where(col(Message.created_at) <= msg.created_at)
         .order_by(col(Message.created_at))
-        .where(col(Message.created_at <= msg.created_at))
     )
     return conv.all()

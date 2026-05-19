@@ -17,9 +17,9 @@ from .procedure import BancobotProcedureCallSender
 
 load_dotenv()
 
-TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
-
-TWIN_DATABASE_URL: str = os.environ["TWIN_DATABASE_URL"]
+# Read env vars lazily / safely so importing this module doesn't crash in unit tests.
+DEFAULT_TOUCHPOINT_CHANNEL: str = os.getenv("TOUCHPOINT_CHANNEL", "tp_channel")
+DEFAULT_TWIN_DATABASE_URL: str | None = os.getenv("TWIN_DATABASE_URL")
 
 
 ConditionCallback = Callable[[Session, Touchpoint], ForkConfig]
@@ -37,7 +37,12 @@ class ForkEngine:
         self, queue: ISubscriber, queue_prod: IPublisher, db_url: str | None = None
     ):
         if db_url is None:
-            db_url = TWIN_DATABASE_URL
+            db_url = DEFAULT_TWIN_DATABASE_URL
+
+        if not db_url:
+            raise ValueError(
+                "Missing database url: pass `db_url` or set TWIN_DATABASE_URL env var"
+            )
 
         # WARN TODO: for now the database has a copy of the messages, but fork
         # engine should read the stream and have them saved in its storage.
@@ -52,14 +57,16 @@ class ForkEngine:
         """Create a new condition to spawn forks, if activity becomes true the callback is called."""
         self.conditions[activity] = callback
 
-    async def awatch(self):
+    async def awatch(self, channel: str | None = None):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
+
+        channel = channel or DEFAULT_TOUCHPOINT_CHANNEL
 
         # Uses TaskGroup to create forks and join them at the end
         async with asyncio.TaskGroup() as tg:
             while True:
                 try:
-                    data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
+                    data: QueueMessage = await self.queue.subscribe(channel)
 
                     tp = Touchpoint.model_validate(data["content"])
 
@@ -87,7 +94,7 @@ class ForkEngine:
                     print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
             # Close queue connection
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
-            await self.queue.unsubscribe("tp_channel")
+            await self.queue.unsubscribe(channel)
 
     async def fork(self, config: ForkConfig):
         print(

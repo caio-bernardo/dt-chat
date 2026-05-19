@@ -7,7 +7,8 @@ from bancobot.agent import BancoAgent, BancoAgentBuilder
 from bancobot.database import MessageType
 from bancobot.models import Conversation, Message
 from classifier.models import Touchpoint
-from fork_engine.engine import ForkConfig, ForkEngine
+from fork_engine.config import ForkConfig
+from fork_engine.engine import ForkEngine
 from langchain_core.messages import AIMessage
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool

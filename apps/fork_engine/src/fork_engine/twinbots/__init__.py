@@ -1,5 +1,5 @@
 from .single_tool import single_rag_tool
-from .triple_rag import triple_rag_tool
+from .triple_tool import triple_rag_tool
 from .two_step import two_step_rag
 
 __all__ = [
