@@ -23,12 +23,12 @@ MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
 
 
 def create_simulated_timestamp_or_default(
-    user_metadata: TimingMetadata | None, delta
+    user_metadata: TimingMetadata | None, delta: dt.timedelta
 ) -> TimingMetadata:
     """Create a Simulated Timestamp for the Bancobot from the user metadata, or returns a default if the previous component is None."""
     # Usamos o timestamp da pergunta + tempo para produzir resposta do BancoBot como timestamp do bancobot
     if not user_metadata:
-        new_sim_tmstp = dt.datetime.now + delta
+        new_sim_tmstp = dt.datetime.now() + delta
     else:
         new_sim_tmstp = (
             dt.datetime.fromtimestamp(user_metadata["simulated_timestamp"]) + delta

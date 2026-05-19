@@ -24,6 +24,7 @@ app = Typer()
 
 MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
 TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
+DB_URL: str = os.environ["TOUCHPOINT_DATABASE_URL"]
 
 
 def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
@@ -42,7 +43,7 @@ def load_tp_list(path: str) -> list[str]:
 
 @app.command(name="export")
 def export_command(
-    file_output: str = "output.csv", db_path: str = "sqlite:///touchpoints.db"
+    file_output: str = "output.csv", db_path: str = "sqlite:///db/touchpoints.db"
 ):
     """Export touchpoints to a csv file, retrieve touchpoints from `db_path`.
 
@@ -118,7 +119,7 @@ async def arun(config: ClassifierConfig):
             # INFO: we do not repass messages comming from the fork, or else we
             # may have a recursive explosion of messages made by the forkers
             # causing more forks
-            if config.stream and data["origin"] == "bancobot":
+            if config.stream and data["origin"] != "twin_bancobot":
                 payload: QueueMessage = {
                     "origin": "classifier",
                     "model_type": "touchpoint",
@@ -134,8 +135,7 @@ async def arun(config: ClassifierConfig):
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Failure on {e}")
             break
-        finally:
-            await consumer.unsubscribe(config.stream_name)
+    await consumer.unsubscribe(config.stream_name)
 
 
 @app.command()
@@ -144,8 +144,8 @@ def run(
     human_touchpoints_file_path: str,
     stream_name: str = "msg_channel",
     stream: bool = False,
-    db_path: str = "sqlite:///touchpoints.db",
-    model: str = "gpt-5",
+    db_path: str = DB_URL,
+    model: str = "gpt-4.1-mini",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).

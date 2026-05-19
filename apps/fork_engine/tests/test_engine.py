@@ -22,7 +22,7 @@ class TestConditionManagement:
     def test_create_condition(self, fork_engine, fork_config):
         """Test creating a single condition."""
 
-        def callback(tp):
+        def callback(_session, _tp):
             return fork_config
 
         activity = "TEST_ACTIVITY"
@@ -35,10 +35,10 @@ class TestConditionManagement:
     def test_create_multiple_conditions(self, fork_engine, fork_config):
         """Test creating multiple conditions."""
 
-        def callback1(tp):
+        def callback1(_session, _tp):
             return fork_config
 
-        def callback2(tp):
+        def callback2(_session, _tp):
             return fork_config
 
         fork_engine.create_condition("ACTIVITY_1", [callback1])
@@ -52,7 +52,7 @@ class TestConditionManagement:
         """Test that condition callback is invoked correctly."""
         called_with = []
 
-        def callback(tp):
+        def callback(_session, tp):
             called_with.append(tp)
             return fork_config
 
@@ -60,7 +60,7 @@ class TestConditionManagement:
 
         # Invoke callback
         callbacks = fork_engine.conditions[touchpoint.activity]
-        result = callbacks[0](touchpoint)
+        result = callbacks[0](MagicMock(), touchpoint)
 
         assert len(called_with) == 1
         assert called_with[0] == touchpoint
@@ -74,7 +74,7 @@ class TestForkExecution:
     async def test_fork_builds_agents(self, fork_config):
         """Test that fork builds bancobot and userbot."""
         engine = ForkEngine(MagicMock(), MagicMock(), db_url="sqlite:///:memory:")
-        engine._storage = iter([MagicMock()])  # pyright: ignore[reportAttributeAccessIssue]
+        engine._storage = MagicMock()  # avoid relying on a real DB session
 
         mock_userbot = AsyncMock()
         fork_config.userbot_builder.build_with_default.return_value = mock_userbot
@@ -88,7 +88,7 @@ class TestForkExecution:
     async def test_fork_runs_userbot(self, fork_config):
         """Test that fork runs the userbot with correct parameters."""
         engine = ForkEngine(MagicMock(), MagicMock(), db_url="sqlite:///:memory:")
-        engine._storage = iter([MagicMock()])  # pyright: ignore[reportAttributeAccessIssue]
+        engine._storage = MagicMock()  # avoid relying on a real DB session
 
         mock_userbot = AsyncMock()
         fork_config.userbot_builder.build_with_default.return_value = mock_userbot
@@ -106,7 +106,7 @@ class TestForkExecution:
         self, mock_bancobot_builder, mock_userbot_builder
     ):
         """Test fork with default TimeSimulationConfig."""
-        from fork_engine.engine import ForkConfig
+        from fork_engine.config import ForkConfig
         from userbot import TimeSimulationConfig
 
         config = ForkConfig(
@@ -127,10 +127,10 @@ class TestMultipleCallbacks:
     def test_create_condition_with_multiple_callbacks(self, fork_engine, fork_config):
         """Test creating condition with multiple callbacks."""
 
-        def callback1(tp):
+        def callback1(_session, _tp):
             return fork_config
 
-        def callback2(tp):
+        def callback2(_session, _tp):
             return fork_config
 
         activity = "TEST_ACTIVITY"
