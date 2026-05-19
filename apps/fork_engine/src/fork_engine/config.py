@@ -63,4 +63,5 @@ def create_config(
         next_msg=str(next_msg),  # re-ask the message before the touchpoint
         timesim=timesim,
         label=label,
+        iterations=15 - len(previous_messages),
     )
