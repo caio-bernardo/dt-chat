@@ -182,6 +182,7 @@ async def injects_conversation(
         .offset(offset)
     ).all()
 
+    sum = 0
     for conv in conversations:
         try:
             payload = QueueMessage(
@@ -200,8 +201,11 @@ async def injects_conversation(
                 )
                 await publisher.publish(channel, payload)
                 print(f"PUBLISH: {payload}")
+                sum += 1
         except Exception as e:
             print(f"FAILURE: {str(e)}")
+
+    print(f"Finished, injected {sum} messages of {len(conversations)}")
 
 
 async def injects_touchpoints(
@@ -225,6 +229,8 @@ async def injects_touchpoints(
             print(f"PUBLISH: {payload}")
         except Exception as e:
             print(f"FAILURE: {str(e)}")
+
+    print(f"Finished, injected {len(tps)} touchpoints")
 
 
 if __name__ == "__main__":
