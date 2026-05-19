@@ -83,3 +83,6 @@ import-dir DIR:
 # injects messages on the classifier
 inject-messages:
     scripts/injector.py sqlite:///db/messages.db msg_channel
+
+inject-touchpoints:
+    scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel
