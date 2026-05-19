@@ -1,15 +1,19 @@
+import asyncio
 import datetime as dt
 import os
 import uuid
-from multiprocessing import Process
 from typing import Callable
 
 from bancobot.agent import BancoAgentBuilder
-from classifier.models import Touchpoint
+from classifier.models import (  # Imports this ones for database creation
+    Conversation,  # pyright: ignore[reportUnusedImport]  # noqa: F401
+    Message,  # pyright: ignore[reportUnusedImport]  # noqa: F401
+    Touchpoint,
+)
 from dotenv import load_dotenv
 from pubsub import IPublisher, ISubscriber, QueueMessage
 from pydantic import BaseModel, ConfigDict
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 from userbot import TimeSimulationConfig, UserBotBuilder
 
 from .helpers import BancobotProcedureCallSender
@@ -52,8 +56,12 @@ class ForkEngine:
     ):
         if db_url is None:
             db_url = TWIN_DATABASE_URL
+
+        # WARN TODO: for now the database has a copy of the messages, but fork
+        # engine should read the stream and have them saved in its storage.
         engine = create_engine(db_url)
-        self._storage = get_session(engine)
+        SQLModel.metadata.create_all(engine)
+        self._storage = next(get_session(engine))
         self.queue = queue
         self.queue_prod = queue_prod
         self.conditions: dict[str, list[ConditionCallback]] = {}
@@ -64,33 +72,40 @@ class ForkEngine:
 
     async def awatch(self):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
-        threads: list[Process] = []
-        try:
+
+        # Uses TaskGroup to create forks and join them at the end
+        async with asyncio.TaskGroup() as tg:
             while True:
-                data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
+                try:
+                    data: QueueMessage = await self.queue.subscribe(TOUCHPOINT_CHANNEL)
 
-                tp = Touchpoint.model_validate(data["content"])
-                print(f"DEBUG: reads {tp}")
-                # if there is any registered callback for an activity
-                # calls the callbacks and gets the config to spawn a new fork in a different process
-                # inspired by neovim `nvim.create_augroup()`.
-                callbacks = self.conditions.get(tp.activity) or []
-                for callback in callbacks:
-                    config = callback(tp)
-                    t = Process(target=self.fork, args=(config,))
-                    threads.append(t)
-                    t.start()
-        except Exception as e:
-            import traceback
+                    tp = Touchpoint.model_validate(data["content"])
 
-            traceback.print_exc()
-            print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
-        finally:
-            # Close queue and wait for forks to finish
+                    # Saves the touchpoint and refreshs it so it has the message and conversation relationship
+                    msg = self._storage.get_one(Message, tp.message_id)
+                    self._storage.refresh(msg)
+                    tp.message = msg
+
+                    # print(f"DEBUG: reads {tp}")
+                    # if there is any registered callback for an activity
+                    # calls the callbacks and gets the config to spawn a new fork in a different process
+                    # inspired by neovim `nvim.create_augroup()`.
+                    callbacks = self.conditions.get(tp.activity) or []
+                    for callback in callbacks:
+                        config = callback(tp)
+                        # create new task
+                        tg.create_task(self.fork(config))
+                except KeyboardInterrupt:
+                    print("Shutdown begin... Press Ctrl-C again to stop execution.")
+                    break
+                except Exception as e:
+                    import traceback
+
+                    traceback.print_exc()
+                    print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+            # Close queue connection
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
             await self.queue.unsubscribe("tp_channel")
-            for t in threads:
-                t.join()
 
     async def fork(self, config: ForkConfig):
         print(
@@ -109,7 +124,7 @@ class ForkEngine:
         config.userbot_builder.asender = BancobotProcedureCallSender(
             config.parent_conversation,
             bancobot,
-            next(self._storage),
+            self._storage,
             self.queue_prod,
             metadata,
         )

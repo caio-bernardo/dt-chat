@@ -1,7 +1,9 @@
+import asyncio
+import threading
 import uuid
-from typing import Dict, Sequence
+from concurrent.futures import Future
+from typing import Any, Callable, Dict, Sequence
 
-import requests
 from bancobot.agent import BancoAgent
 from bancobot.database import MessageType
 from bancobot.models import Message
@@ -13,8 +15,6 @@ from sqlmodel import Session
 from userbot import IAsyncMessageSender, TimeSimulationConfig
 
 load_dotenv()
-
-BANCOBOT_URL = "http://localhost:8000"
 
 
 def load_history(session_id: int, limit: int) -> Sequence[Message]:
@@ -33,13 +33,6 @@ def map_internal_2_langchain_message(msg: Message) -> AnyMessage:
             return SystemMessage(content=msg.content)
 
 
-def retrieve_conversation_metadata(conversation_id: uuid.UUID) -> dict:
-    """Makes a HTTP request to the original Banco Bot to retrieve metadata values from a given conversation"""
-    data = requests.get(f"{BANCOBOT_URL}/sessions/{conversation_id}").json()
-    meta = data["meta"]
-    return meta
-
-
 def retrieve_timesim_from_metadata(meta: dict) -> TimeSimulationConfig:
     """Retrive a TimeSimulationConfig from a metadata dictionary"""
     assert "timesim" in meta
@@ -52,22 +45,21 @@ def retrieve_userbot_persona_from_metadata(meta: dict) -> str:
     return meta["persona"]
 
 
-def retrieve_conversation_messages(conversation_id: uuid.UUID) -> Sequence[AnyMessage]:
+def convert_conversation_to_langchain_types(
+    raw_conversation: list[Message],
+) -> Sequence[AnyMessage]:
     """Retrieve the messages from a given conversation"""
-    data = requests.get(f"{BANCOBOT_URL}/sessions/{conversation_id}/messages").json()
     result = []
-    for msg in data:
-        match msg["type"].lower():
-            case "ai":
+    for msg in raw_conversation:
+        match msg.type:
+            case MessageType.AI:
                 result.append(
-                    AIMessage(
-                        content=msg["content"], timing_metadata=msg["timing_metadata"]
-                    )
+                    AIMessage(content=msg.content, timing_metadata=msg.timing_metadata)
                 )
-            case "human":
+            case MessageType.Human:
                 result.append(
                     HumanMessage(
-                        content=msg["content"], timing_metadata=msg["timing_metadata"]
+                        content=msg.content, timing_metadata=msg.timing_metadata
                     )
                 )
             case _:
@@ -106,12 +98,28 @@ class BancobotProcedureCallSender(IAsyncMessageSender):
     async def send_message(self, msg: HumanMessage) -> AIMessage:
         if not self.conversation_id:
             raise ValueError("Conversation not created yet")
-        props = MessageCreate.model_validate(
-            {
-                "conversation_id": self.conversation_id,
-                "content": str(msg.content),
-                "timinig_metadata": msg.timing_metadata or {},  # pyright: ignore[reportAttributeAccessIssue]
-            }
+        assert msg.timing_metadata, ValueError(  # pyright: ignore[reportAttributeAccessIssue]
+            "no timing metadata attached to human msg"
+        )
+        props = MessageCreate(
+            conversation_id=self.conversation_id,
+            content=str(msg.content),
+            timing_metadata=msg.timing_metadata,  # pyright: ignore[reportAttributeAccessIssue]
         )
         answer = await self._service.save_publish_answer_message(props)
         return AIMessage(content=answer.content, timing_metadata=answer.timing_metadata)
+
+
+def run_async_thread(async_func: Callable[..., Any], *args, **kwargs) -> Any:
+    fut = Future()
+
+    def _runnet():
+        try:
+            res = asyncio.run(async_func(*args, **kwargs))
+            fut.set_result(res)
+        except Exception as e:
+            fut.set_exception(e)
+
+    thread = threading.Thread(target=_runnet)
+    thread.start()
+    return fut
