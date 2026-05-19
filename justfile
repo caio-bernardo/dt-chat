@@ -62,6 +62,14 @@ redis-down:
     docker compose down redis
     @echo Redis image down
 
+# See size of queue in redis
+redis-queue-size QUEUE:
+    docker exec -it dtchat-redis redis-cli llen {{ QUEUE }}
+
+# Clear redis queue
+redis-clear QUEUE:
+    docker exec -it dtchat-redis redis-cli del {{ QUEUE }}
+
 # Iterates over a directory importing each json file to conversations database, also publish them to classification
 import-dir DIR:
     #!/usr/bin/env sh
