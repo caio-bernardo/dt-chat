@@ -24,6 +24,7 @@ app = Typer()
 
 MSG_CHANNEL: str = os.environ["MSG_CHANNEL"]
 TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
+DB_URL: str = os.environ["TOUCHPOINT_DATABASE_URL"]
 
 
 def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
@@ -134,8 +135,7 @@ async def arun(config: ClassifierConfig):
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Failure on {e}")
             break
-        finally:
-            await consumer.unsubscribe(config.stream_name)
+    await consumer.unsubscribe(config.stream_name)
 
 
 @app.command()
@@ -144,7 +144,7 @@ def run(
     human_touchpoints_file_path: str,
     stream_name: str = "msg_channel",
     stream: bool = False,
-    db_path: str = "sqlite:///touchpoints.db",
+    db_path: str = DB_URL,
     model: str = "gpt-4.1-mini",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
