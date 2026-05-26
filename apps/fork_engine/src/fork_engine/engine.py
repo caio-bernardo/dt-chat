@@ -107,8 +107,8 @@ class ForkEngine:
         # + Generates a new session connection for this fork, so each fork has a
         # database connection that will be closed on exit.
         metadata = {
-            "branched_message_id": str(config.branched_message_id),
-            "twinbot_type": config.label,
+            "catalyst_message_id": str(config.branched_message_id),
+            "bot_label": config.label,
         }
         config.userbot_builder.asender = BancobotProcedureCallSender(
             config.parent_conversation,
