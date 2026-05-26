@@ -29,12 +29,20 @@ classifier-test:
     uv run --package classifier pytest apps/classifier/tests
 
 # Run Classifier tests with coverage
-classifer-test-cov:
+classifier-test-cov:
     uv run --package classifier pytest apps/classifier/tests --cov=classifier --cov-report=term-missing
 
 # Run Classifier export function
-exporter:
-    uv run --package classifier classifier export
+exporter output-file="output.csv":
+    uv run --package exporter exporter --output-file {{ output-file }}
+
+# Run Exportr tests
+exporter-test:
+    uv run --package exporter pytest apps/exporter/tests
+
+# Run Exporter Tests with coverage
+exporter-test-cov:
+    uv run --package exporter pytest apps/exporter/tests --cov=exporter --cov-report=term-missing
 
 ### Fork Engine ###
 
