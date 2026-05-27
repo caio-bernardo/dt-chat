@@ -106,9 +106,10 @@ class ForkEngine:
         # create a service that can use bancoagent and publish the messages back to the classifier
         # + Generates a new session connection for this fork, so each fork has a
         # database connection that will be closed on exit.
+        # WARN: "twin_bot_type" and "branched_message_id" are deprecated, please use the new keys
         metadata = {
             "catalyst_message_id": str(config.branched_message_id),
-            "twin_bot_type": config.label,
+            "bot_label": config.label,
         }
         config.userbot_builder.asender = BancobotProcedureCallSender(
             config.parent_conversation,
