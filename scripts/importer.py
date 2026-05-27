@@ -14,6 +14,8 @@
 # timesim = { path = "../libs/timesim" }
 # ///
 
+"""Importer takes a set of json data and produces a database of messages."""
+
 import datetime as dt
 import enum
 import json
