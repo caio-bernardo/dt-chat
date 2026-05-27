@@ -83,10 +83,14 @@ class TouchpointExporter:
 
         event_id = 0
         for case_id, conv_touchpoints in grouped.items():
-            conversation = self.storage.exec(
-                select(Conversation).where(Conversation.id == case_id)
-            ).one()
+            conversation = self.storage.get(Conversation, case_id)
+            if conversation is None:
+                # Conversation row missing; skip exporting this case.
+                continue
+
             conv_metadata = conversation.meta or {}
+            if not isinstance(conv_metadata, dict):
+                conv_metadata = {}
 
             # Build an ordered, de-duplicated list of touchpoints for this exported case,
             # including all parent-chain touchpoints.
@@ -110,18 +114,28 @@ class TouchpointExporter:
                 except ValueError:
                     branch_message_id = None
 
-            # Seed with parent conversation touchpoints up to the branch point.
+            # Seed with parent conversation touchpoints *up to but excluding* the branch point.
+            # The branch/catalyst message is re-asked in the fork, so it must NOT be exported
+            # as part of the parent history to avoid an off-by-one duplication.
             if isinstance(branch_message_id, uuid.UUID):
                 branch_tp = tp_by_message_id.get(branch_message_id)
                 if branch_tp is not None:
                     parent_conv_id = branch_tp.message.conversation_id
                     for parent_tp in grouped.get(parent_conv_id, []):
-                        _add_tp(parent_tp)
                         if parent_tp.message_id == branch_message_id:
                             break
+                        _add_tp(parent_tp)
 
             for tp in conv_touchpoints:
                 for parent_msg in self._get_parent_chain(tp.message):
+                    # Safety: if we ever have a cross-conversation parent pointer (or the
+                    # branch point appears in a parent chain), don't export the catalyst.
+                    if (
+                        isinstance(branch_message_id, uuid.UUID)
+                        and parent_msg.id == branch_message_id
+                    ):
+                        continue
+
                     parent_tp = tp_by_message_id.get(parent_msg.id)
                     if parent_tp is None:
                         continue
@@ -134,7 +148,11 @@ class TouchpointExporter:
 
             # Forked conversations in this repo have used different metadata keys over time.
             # Support both current and legacy ones.
-            bot_label = conv_metadata.get("twinbot_type", "")
+            bot_label = (
+                conv_metadata.get("bot_label")
+                or conv_metadata.get("twinbot_type")
+                or ""
+            )
             tool_source = conv_metadata.get("tool_source", "")
 
             catalyst_case_id: uuid.UUID | None = None

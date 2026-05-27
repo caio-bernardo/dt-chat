@@ -82,11 +82,13 @@ class TestTouchpointExporter:
 
         # Only validate rows for the target conversation.
         # Since this conversation is a fork (catalyst/branched message provided),
-        # the export should include the parent history up to the catalyst message.
+        # the export would include parent history *before* the catalyst message.
+        # Here the parent conversation has only the catalyst touchpoint, so no parent history
+        # should be included.
         target_rows = [r for r in rows if r["case_id"] == str(target_conv_id)]
-        assert len(target_rows) == 4  # START + parent(tp) + touchpoint + END
+        assert len(target_rows) == 3  # START + touchpoint + END
 
-        start, parent_tp_row, tp_row, end = target_rows
+        start, tp_row, end = target_rows
 
         assert start["event_id"] == "3"  # after catalyst conversation export (0,1,2)
         assert start["internal_id"] == "-1"
@@ -94,25 +96,16 @@ class TestTouchpointExporter:
         assert start["activity"] == "START-DIALOGUE-SYSTEM"
 
         # Timestamp expectations: start == first touchpoint timestamp in the exported case
-        assert start["timestamp"] == (fixed_dt + dt.timedelta(seconds=10)).isoformat()
+        assert start["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()
 
-        assert parent_tp_row["event_id"] == "4"
-        assert parent_tp_row["internal_id"] == "0"
-        assert parent_tp_row["actor"] == "human"
-        assert parent_tp_row["activity"] == "CATALYST_TP"
-        assert (
-            parent_tp_row["timestamp"]
-            == (fixed_dt + dt.timedelta(seconds=10)).isoformat()
-        )
-
-        assert tp_row["event_id"] == "5"
-        assert tp_row["internal_id"] == "1"
+        assert tp_row["event_id"] == "4"
+        assert tp_row["internal_id"] == "0"
 
         assert tp_row["actor"] == "ai"
         assert tp_row["activity"] == "TARGET_TP"
         assert tp_row["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()
 
-        assert end["event_id"] == "6"
+        assert end["event_id"] == "5"
         assert end["internal_id"] == "99999"
         assert end["actor"] == "System"
         assert end["activity"] == "END-DIALOGUE-SYSTEM"
@@ -191,7 +184,6 @@ class TestTouchpointExporter:
         assert [r["activity"] for r in child_rows] == [
             "START-DIALOGUE-SYSTEM",
             "P1",
-            "P2",
             "C",
             "END-DIALOGUE-SYSTEM",
         ]
@@ -243,10 +235,9 @@ class TestTouchpointExporter:
         db_session.add(child_msg)
         db_session.add(parent_tp)
         db_session.add(child_tp)
-        db_session.commit()
 
         exporter = TouchpointExporter(storage=db_session)
-        header, rows = _read_csv(exporter.export_csv_str().getvalue())
+        eader, rows = _read_csv(exporter.export_csv_str().getvalue())
 
         child_rows = [r for r in rows if r["case_id"] == str(child_conv_id)]
         assert [r["activity"] for r in child_rows] == [
