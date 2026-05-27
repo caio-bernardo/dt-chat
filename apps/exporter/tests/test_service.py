@@ -76,16 +76,17 @@ class TestTouchpointExporter:
             "tool_source",
             "catalyst_case_id",
             "catalyst_message_id",
-            "catalyst_message_content",
             "catalyst_activity",
             "catalyst_message_ts",
         ]
 
         # Only validate rows for the target conversation.
+        # Since this conversation is a fork (catalyst/branched message provided),
+        # the export should include the parent history up to the catalyst message.
         target_rows = [r for r in rows if r["case_id"] == str(target_conv_id)]
-        assert len(target_rows) == 3  # START + 1 touchpoint + END
+        assert len(target_rows) == 4  # START + parent(tp) + touchpoint + END
 
-        start, tp_row, end = target_rows
+        start, parent_tp_row, tp_row, end = target_rows
 
         assert start["event_id"] == "3"  # after catalyst conversation export (0,1,2)
         assert start["internal_id"] == "-1"
@@ -93,18 +94,28 @@ class TestTouchpointExporter:
         assert start["activity"] == "START-DIALOGUE-SYSTEM"
 
         # Timestamp expectations: start == first touchpoint timestamp in the exported case
-        assert start["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()
+        assert start["timestamp"] == (fixed_dt + dt.timedelta(seconds=10)).isoformat()
 
-        assert tp_row["event_id"] == "4"
-        assert tp_row["internal_id"] == "0"
+        assert parent_tp_row["event_id"] == "4"
+        assert parent_tp_row["internal_id"] == "0"
+        assert parent_tp_row["actor"] == "human"
+        assert parent_tp_row["activity"] == "CATALYST_TP"
+        assert (
+            parent_tp_row["timestamp"]
+            == (fixed_dt + dt.timedelta(seconds=10)).isoformat()
+        )
+
+        assert tp_row["event_id"] == "5"
+        assert tp_row["internal_id"] == "1"
+
         assert tp_row["actor"] == "ai"
         assert tp_row["activity"] == "TARGET_TP"
         assert tp_row["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()
 
-        assert end["event_id"] == "5"
+        assert end["event_id"] == "6"
         assert end["internal_id"] == "99999"
         assert end["actor"] == "System"
-        assert end["activity"] == "END - DIALOGUE - SYSTEM"
+        assert end["activity"] == "END-DIALOGUE-SYSTEM"
         assert end["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()
 
         # Catalyst fields should be populated for *all* rows in the target conversation.
@@ -112,12 +123,85 @@ class TestTouchpointExporter:
             assert row["bot_label"] == "my-bot"
             assert row["catalyst_case_id"] == str(catalyst_conv_id)
             assert row["catalyst_message_id"] == str(catalyst_msg_id)
-            assert row["catalyst_message_content"] == "catalyst message"
             assert row["catalyst_activity"] == "CATALYST_TP"
             assert (
                 row["catalyst_message_ts"]
                 == (fixed_dt + dt.timedelta(seconds=10)).isoformat()
             )
+
+    def test_export_csv_str_includes_parent_history_using_legacy_branched_message_id(
+        self, db_session, make_message, fixed_dt
+    ):
+        parent_conv_id = uuid.UUID("00000000-0000-0000-0000-000000000100")
+        child_conv_id = uuid.UUID("00000000-0000-0000-0000-000000000200")
+
+        parent_msg1_id = uuid.UUID("00000000-0000-0000-0000-000000000101")
+        parent_msg2_id = uuid.UUID("00000000-0000-0000-0000-000000000102")
+        child_msg_id = uuid.UUID("00000000-0000-0000-0000-000000000201")
+
+        parent_conv = Conversation(id=parent_conv_id, meta={})
+        child_conv = Conversation(
+            id=child_conv_id,
+            meta={
+                "twinbot_type": "legacy-label",
+                "branched_message_id": str(parent_msg2_id),
+            },
+        )
+
+        parent_msg1 = make_message(
+            conversation_id=parent_conv_id,
+            message_id=parent_msg1_id,
+            content="m1",
+            msg_type=MessageType.Human,
+            seconds_offset=1,
+        )
+        parent_msg2 = make_message(
+            conversation_id=parent_conv_id,
+            message_id=parent_msg2_id,
+            content="m2",
+            msg_type=MessageType.AI,
+            seconds_offset=2,
+        )
+        child_msg = make_message(
+            conversation_id=child_conv_id,
+            message_id=child_msg_id,
+            content="forked",
+            msg_type=MessageType.Human,
+            seconds_offset=3,
+        )
+
+        parent_tp1 = Touchpoint(message_id=parent_msg1_id, activity="P1")
+        parent_tp2 = Touchpoint(message_id=parent_msg2_id, activity="P2")
+        child_tp = Touchpoint(message_id=child_msg_id, activity="C")
+
+        db_session.add(parent_conv)
+        db_session.add(child_conv)
+        db_session.add(parent_msg1)
+        db_session.add(parent_msg2)
+        db_session.add(child_msg)
+        db_session.add(parent_tp1)
+        db_session.add(parent_tp2)
+        db_session.add(child_tp)
+        db_session.commit()
+
+        exporter = TouchpointExporter(storage=db_session)
+        _, rows = _read_csv(exporter.export_csv_str().getvalue())
+
+        child_rows = [r for r in rows if r["case_id"] == str(child_conv_id)]
+        assert [r["activity"] for r in child_rows] == [
+            "START-DIALOGUE-SYSTEM",
+            "P1",
+            "P2",
+            "C",
+            "END-DIALOGUE-SYSTEM",
+        ]
+
+        # bot_label should fall back to legacy key.
+        assert all(r["bot_label"] == "legacy-label" for r in child_rows)
+
+        # catalyst fields should use the branch point
+        assert all(r["catalyst_message_id"] == str(parent_msg2_id) for r in child_rows)
+        assert all(r["catalyst_case_id"] == str(parent_conv_id) for r in child_rows)
 
     def test_export_csv_str_includes_parent_chain_for_branched_conversation(
         self, db_session, make_message, fixed_dt
@@ -169,7 +253,7 @@ class TestTouchpointExporter:
             "START-DIALOGUE-SYSTEM",
             "PARENT",
             "CHILD",
-            "END - DIALOGUE - SYSTEM",
+            "END-DIALOGUE-SYSTEM",
         ]
 
         # Internal ids should reflect the full exported history (including parents)

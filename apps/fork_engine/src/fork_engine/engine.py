@@ -108,7 +108,7 @@ class ForkEngine:
         # database connection that will be closed on exit.
         metadata = {
             "catalyst_message_id": str(config.branched_message_id),
-            "bot_label": config.label,
+            "twin_bot_type": config.label,
         }
         config.userbot_builder.asender = BancobotProcedureCallSender(
             config.parent_conversation,

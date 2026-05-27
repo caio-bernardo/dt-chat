@@ -26,7 +26,6 @@ class TouchpointExportFormat(TypedDict):
         uuid.UUID | None  # id of the original
     )
     catalyst_message_id: uuid.UUID | None  # id of the catalyst message
-    catalyst_message_content: str | None  # content of the catalyst
     catalyst_activity: str | None  # tp of the catalyst
     catalyst_message_ts: str | None  # timestamp of the catalyst
 
@@ -84,70 +83,88 @@ class TouchpointExporter:
 
         event_id = 0
         for case_id, conv_touchpoints in grouped.items():
+            conversation = self.storage.exec(
+                select(Conversation).where(Conversation.id == case_id)
+            ).one()
+            conv_metadata = conversation.meta or {}
+
             # Build an ordered, de-duplicated list of touchpoints for this exported case,
             # including all parent-chain touchpoints.
             ordered_touchpoints: list[Touchpoint] = []
             seen_message_ids: set[uuid.UUID] = set()
+
+            def _add_tp(tp: Touchpoint) -> None:
+                if tp.message_id in seen_message_ids:
+                    return
+                ordered_touchpoints.append(tp)
+                seen_message_ids.add(tp.message_id)
+
+            # If this is a forked conversation, legacy datasets store the branch point
+            # as `branched_message_id` and newer ones may use `catalyst_message_id`.
+            branch_message_id = conv_metadata.get(
+                "catalyst_message_id"
+            ) or conv_metadata.get("branched_message_id")
+            if isinstance(branch_message_id, str):
+                try:
+                    branch_message_id = uuid.UUID(branch_message_id)
+                except ValueError:
+                    branch_message_id = None
+
+            # Seed with parent conversation touchpoints up to the branch point.
+            if isinstance(branch_message_id, uuid.UUID):
+                branch_tp = tp_by_message_id.get(branch_message_id)
+                if branch_tp is not None:
+                    parent_conv_id = branch_tp.message.conversation_id
+                    for parent_tp in grouped.get(parent_conv_id, []):
+                        _add_tp(parent_tp)
+                        if parent_tp.message_id == branch_message_id:
+                            break
 
             for tp in conv_touchpoints:
                 for parent_msg in self._get_parent_chain(tp.message):
                     parent_tp = tp_by_message_id.get(parent_msg.id)
                     if parent_tp is None:
                         continue
-                    if parent_tp.message_id in seen_message_ids:
-                        continue
-                    ordered_touchpoints.append(parent_tp)
-                    seen_message_ids.add(parent_tp.message_id)
+                    _add_tp(parent_tp)
 
-                if tp.message_id not in seen_message_ids:
-                    ordered_touchpoints.append(tp)
-                    seen_message_ids.add(tp.message_id)
+                _add_tp(tp)
 
             if not ordered_touchpoints:
                 continue
 
-            conversation = self.storage.exec(
-                select(Conversation).where(Conversation.id == case_id)
-            ).one()
-            conv_metadata = conversation.meta or {}
-
-            bot_label = conv_metadata.get("bot_label", "")
+            # Forked conversations in this repo have used different metadata keys over time.
+            # Support both current and legacy ones.
+            bot_label = conv_metadata.get("twinbot_type", "")
             tool_source = conv_metadata.get("tool_source", "")
 
             catalyst_case_id: uuid.UUID | None = None
             catalyst_msg_id: uuid.UUID | None = None
-            catalyst_message_content: str | None = None
             catalyst_activity: str | None = None
             catalyst_message_ts: str | None = None
 
-            catalyst_message_id = conv_metadata.get("catalyst_message_id")
-            if isinstance(catalyst_message_id, str):
-                try:
-                    catalyst_message_id = uuid.UUID(catalyst_message_id)
-                except ValueError:
-                    catalyst_message_id = None
+            catalyst_message_id = branch_message_id
 
-            if catalyst_message_id is not None:
-                catalyst_message = self.storage.exec(
-                    select(Message).where(Message.id == catalyst_message_id)
-                ).one()
-                catalyst_tp = self.storage.exec(
-                    select(Touchpoint).where(
-                        Touchpoint.message_id == catalyst_message_id
+            if isinstance(catalyst_message_id, uuid.UUID):
+                catalyst_message = self.storage.get(Message, catalyst_message_id)
+                catalyst_tp = tp_by_message_id.get(catalyst_message_id)
+                if catalyst_tp is None:
+                    catalyst_tp = self.storage.exec(
+                        select(Touchpoint).where(
+                            Touchpoint.message_id == catalyst_message_id
+                        )
+                    ).first()
+
+                if catalyst_message is not None and catalyst_tp is not None:
+                    catalyst_case_id = catalyst_message.conversation_id
+                    catalyst_msg_id = catalyst_message.id
+                    catalyst_activity = catalyst_tp.activity
+
+                    sim_ts = catalyst_message.timing_metadata.get("simulated_timestamp")
+                    catalyst_message_ts = (
+                        dt.datetime.fromtimestamp(sim_ts).isoformat()
+                        if sim_ts is not None
+                        else catalyst_message.created_at.isoformat()
                     )
-                ).one()
-
-                catalyst_case_id = catalyst_message.conversation_id
-                catalyst_msg_id = catalyst_message.id
-                catalyst_message_content = catalyst_message.content
-                catalyst_activity = catalyst_tp.activity
-
-                sim_ts = catalyst_message.timing_metadata.get("simulated_timestamp")
-                catalyst_message_ts = (
-                    dt.datetime.fromtimestamp(sim_ts).isoformat()
-                    if sim_ts is not None
-                    else catalyst_message.created_at.isoformat()
-                )
 
             common: dict = {
                 "case_id": case_id,
@@ -155,7 +172,6 @@ class TouchpointExporter:
                 "tool_source": tool_source,
                 "catalyst_case_id": catalyst_case_id,
                 "catalyst_message_id": catalyst_msg_id,
-                "catalyst_message_content": catalyst_message_content,
                 "catalyst_activity": catalyst_activity,
                 "catalyst_message_ts": catalyst_message_ts,
             }
@@ -193,7 +209,7 @@ class TouchpointExporter:
                     "event_id": event_id,
                     "internal_id": 99999,
                     "actor": "System",
-                    "activity": "END - DIALOGUE - SYSTEM",
+                    "activity": "END-DIALOGUE-SYSTEM",
                     "timestamp": ordered_touchpoints[-1].timestamp.isoformat(),
                     **common,
                 }

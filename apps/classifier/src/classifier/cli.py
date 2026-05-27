@@ -14,7 +14,6 @@ from typer import Typer
 
 from classifier.agent import ClassifierAgent
 from classifier.database import create_db_and_tables, get_session
-from classifier.exporter import TouchpointExporter
 from classifier.models import Conversation, Message
 from classifier.services import ClassifierService
 
@@ -39,32 +38,6 @@ def load_tp_list(path: str) -> list[str]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
         return [item.get("subtipo", "") for item in data if "subtipo" in item]
-
-
-@app.command(name="export")
-def export_command(
-    file_output: str = "output.csv", db_path: str = "sqlite:///db/touchpoints.db"
-):
-    """Export touchpoints to a csv file, retrieve touchpoints from `db_path`.
-
-    The file is composable of an global event id, a case id (represents the
-    conversation session), the producer/actor of the message, the touchpoint
-    type, a timestamp of the message and a internal id, representing the age of the message in the conversatio.
-
-    Each conversation has a `START` and `END` touchpoint with internal ids -1
-    and 99999 respectively, they contain the timestamp of the first and last
-    message in the conversation.
-    """
-    engine = create_db_and_tables(db_path)
-    session = next(get_session(engine))
-    exporter = TouchpointExporter(storage=session)
-
-    print("Exporting touchpoints")
-    with open(file_output, "w+") as f:
-        contents = exporter.export_csv_str()
-        f.write(contents.getvalue())
-
-    print("Exporting Complete.")
 
 
 class ClassifierConfig(BaseModel):

@@ -33,12 +33,15 @@ classifier-test-cov:
     uv run --package classifier pytest apps/classifier/tests --cov=classifier --cov-report=term-missing
 
 # Run Classifier export function
-exporter output-file="output.csv":
-    uv run --package exporter exporter --output-file {{ output-file }}
+exporter output-file="output-new.csv":
+    uv run --package exporter exporter --file-output {{ output-file }}
 
 # Run Exportr tests
 exporter-test:
     uv run --package exporter pytest apps/exporter/tests
+
+old-export:
+    uv run --package classifier classifier export --file-output "output-old.csv"
 
 # Run Exporter Tests with coverage
 exporter-test-cov:
