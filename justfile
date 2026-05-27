@@ -61,6 +61,15 @@ forker-test:
 forker-test-cov:
     uv run --package fork-engine pytest apps/fork_engine/tests --cov=fork_engine --cov-report=term-missing
 
+### Tests
+
+# Run all tests with silent and ignore warnings
+test:
+    uv run --package bancobot pytest apps/bancobot/tests -q -p no:warnings
+    uv run --package classifier pytest apps/classifier/tests -q -p no:warnings
+    uv run --package fork-engine pytest apps/fork_engine/tests -q -p no:warnings
+    uv run --package exporter pytest apps/exporter/tests -q -p no:warnings
+
 ### Redis Cache ###
 
 # Starts Redis Container
