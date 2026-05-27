@@ -54,4 +54,4 @@ def retrieve_messages_until(storage: Session, msg: Message) -> list[Message]:
         .where(col(Message.created_at) <= msg.created_at)
         .order_by(col(Message.created_at))
     )
-    return conv.all()
+    return list(conv.all())
