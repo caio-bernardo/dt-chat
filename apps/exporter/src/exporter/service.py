@@ -153,7 +153,6 @@ class TouchpointExporter:
                 or conv_metadata.get("twinbot_type")
                 or ""
             )
-            tool_source = conv_metadata.get("tool_source", "")
 
             catalyst_case_id: uuid.UUID | None = None
             catalyst_msg_id: uuid.UUID | None = None
@@ -187,7 +186,6 @@ class TouchpointExporter:
             common: dict = {
                 "case_id": case_id,
                 "bot_label": bot_label,
-                "tool_source": tool_source,
                 "catalyst_case_id": catalyst_case_id,
                 "catalyst_message_id": catalyst_msg_id,
                 "catalyst_activity": catalyst_activity,
@@ -202,6 +200,7 @@ class TouchpointExporter:
                     "actor": "System",
                     "activity": "START-DIALOGUE-SYSTEM",
                     "timestamp": ordered_touchpoints[0].timestamp.isoformat(),
+                    "tool_source": "",
                     **common,
                 }
             )
@@ -216,6 +215,7 @@ class TouchpointExporter:
                         "actor": tp.message.type.value,
                         "activity": tp.activity,
                         "timestamp": tp.timestamp.isoformat(),
+                        "tool_source": tp.message.meta.get("tool_source", ""),
                         **common,
                     }
                 )
@@ -229,6 +229,7 @@ class TouchpointExporter:
                     "actor": "System",
                     "activity": "END-DIALOGUE-SYSTEM",
                     "timestamp": ordered_touchpoints[-1].timestamp.isoformat(),
+                    "tool_source": "",
                     **common,
                 }
             )

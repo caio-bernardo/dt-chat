@@ -40,6 +40,7 @@ class TestTouchpointExporter:
             content="catalyst message",
             msg_type=MessageType.Human,
             seconds_offset=10,
+            meta={"tool_source": "cartoes"},
         )
         target_msg = make_message(
             conversation_id=target_conv_id,
@@ -47,6 +48,7 @@ class TestTouchpointExporter:
             content="hello",
             msg_type=MessageType.AI,
             seconds_offset=20,
+            meta={"tool_source": "cartoes"},
         )
 
         catalyst_tp = Touchpoint(message_id=catalyst_msg_id, activity="CATALYST_TP")
@@ -94,6 +96,7 @@ class TestTouchpointExporter:
         assert start["internal_id"] == "-1"
         assert start["actor"] == "System"
         assert start["activity"] == "START-DIALOGUE-SYSTEM"
+        assert start["tool_source"] in "cartoes"
 
         # Timestamp expectations: start == first touchpoint timestamp in the exported case
         assert start["timestamp"] == (fixed_dt + dt.timedelta(seconds=20)).isoformat()

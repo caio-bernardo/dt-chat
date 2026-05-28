@@ -106,6 +106,7 @@ class TestMessageCreate:
         assert msg.content == "Hello"
         assert msg.type == MessageType.Human
         assert msg.timing_metadata == {}
+        assert msg.meta == {}
 
     def test_message_create_with_ai_type(self, conversation):
         msg = MessageCreate(
@@ -132,6 +133,14 @@ class TestMessageCreate:
         )
         assert msg.parent_message_id == parent_id
 
+    def test_message_create_with_metadata(self, conversation):
+        msg = MessageCreate(
+            conversation_id=conversation.id,
+            content="Test message",
+            meta={"key": "value"},
+        )
+        assert msg.meta == {"key": "value"}
+
 
 class TestMessage:
     """Test Message model."""
@@ -146,6 +155,7 @@ class TestMessage:
         assert msg.content == "Test message"
         assert msg.type == MessageType.Human
         assert msg.created_at is not None
+        assert msg.meta == {}
 
     def test_message_defaults(self, conversation):
         msg = Message(
@@ -154,6 +164,7 @@ class TestMessage:
         )
         assert msg.type == MessageType.Human
         assert msg.timing_metadata == {}
+        assert msg.meta == {}
 
     def test_message_with_timing_metadata(self, conversation, timing_metadata):
         msg = Message(
@@ -189,6 +200,7 @@ class TestMessagePublic:
         assert msg.id == fake_id
         assert msg.content == "Public message"
         assert msg.type == MessageType.AI
+        assert msg.meta == {}
 
     def test_message_public_with_parent_message_id(self, conversation):
         parent_id = uuid.uuid4()
@@ -287,6 +299,7 @@ class TestMessagePublicComplete:
         assert msg.id == uuid.UUID(int=1)
         assert msg.conversation_id == conversation.id
         assert msg.type == MessageType.Human
+        assert msg.meta == {}
         assert hasattr(msg, "conversation")
         assert hasattr(msg, "parent")
 

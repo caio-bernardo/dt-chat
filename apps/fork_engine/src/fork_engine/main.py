@@ -38,8 +38,6 @@ async def amain():
     engine = ForkEngine(consumer, producer)
 
     print("[INFO]: Setting up fork conditions...")
-    engine.create_condition(
-        "SOLICITAÇÃO DIRETA DE HUMANO", [two_steps, triple_rag, default]
-    )
+    engine.create_condition("SOLICITAÇÃO DIRETA DE HUMANO", [default])
     print("[INFO]: Listening for new messages ...")
     await engine.awatch()

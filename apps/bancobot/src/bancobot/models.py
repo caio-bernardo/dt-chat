@@ -63,6 +63,7 @@ class MessageBase(SQLModel):
     timing_metadata: TimingMetadata = Field(
         default_factory=dict, sa_column=Column(JSON)
     )
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Used to create a timeline
     parent_message_id: uuid.UUID | None = Field(foreign_key="message.id", default=None)

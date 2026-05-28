@@ -84,6 +84,7 @@ class MessageBase(SQLModel):
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
     )
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSON))
     timing_metadata: TimingMetadata = Field(
         default_factory=dict, sa_column=Column(JSON)
     )

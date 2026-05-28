@@ -22,7 +22,7 @@ bancobot-test-cov:
 
 # Run Classifier app
 classifier AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
-    uv run --package classifier classifier run --stream {{ AI_TP }} {{ HUMAN_TP }}
+    uv run --package classifier classifier --stream {{ AI_TP }} {{ HUMAN_TP }}
 
 # Run Classifier tests
 classifier-test:
@@ -104,5 +104,5 @@ import-dir DIR:
 inject-messages:
     scripts/injector.py sqlite:///db/messages.db msg_channel
 
-inject-touchpoints:
-    scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt 1308
+inject-touchpoints QNT='1308':
+    scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt {{ QNT }}
