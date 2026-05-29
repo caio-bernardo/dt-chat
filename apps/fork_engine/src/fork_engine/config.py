@@ -44,7 +44,7 @@ def create_config(
     )
 
     # This touchpoint is only produced by humans, so If the message is at the
-    # begining (max position 2) then we are begin the conversation from the
+    # begining (max position 2) then we begin the conversation from the
     # start
     if len(previous_messages) < 4:
         next_msg = "Olá"
