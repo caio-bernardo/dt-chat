@@ -129,11 +129,7 @@ class BancoBotService:
                 type=MessageType.AI,
                 timing_metadata=answer_ts_metadata,
                 # includes the name of all tools used to produce answer
-                meta={
-                    "tool_source": ",".join(
-                        set(map(lambda tc: tc["name"], answer.tool_calls))
-                    )
-                },
+                meta={"tool_source": answer.additional_kwargs.get("tool_source", "")},
             )
 
             return await self.save_and_publish_message(payload, answer_ts_metadata)
