@@ -84,14 +84,15 @@ class ForkEngine:
                         config = callback(self._storage, tp)
                         # create new task
                         tg.create_task(self.fork(config))
+                except asyncio.CancelledError:
+                    print("Fork cancelled")
+                    break
                 except KeyboardInterrupt:
                     print("Shutdown begin... Press Ctrl-C again to stop execution.")
                     break
                 except Exception as e:
-                    import traceback
-
-                    traceback.print_exc()
                     print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+                    break
             # Close queue connection
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
             await self.queue.unsubscribe(channel)
