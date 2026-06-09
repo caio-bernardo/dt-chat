@@ -22,7 +22,7 @@ bancobot-test-cov:
 
 # Run Classifier app
 classifier AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
-    uv run --package classifier classifier run --stream {{ AI_TP }} {{ HUMAN_TP }}
+    uv run --package classifier classifier --stream {{ AI_TP }} {{ HUMAN_TP }}
 
 # Run Classifier tests
 classifier-test:
@@ -61,6 +61,15 @@ forker-test:
 forker-test-cov:
     uv run --package fork-engine pytest apps/fork_engine/tests --cov=fork_engine --cov-report=term-missing
 
+### Tests
+
+# Run all tests with silent and ignore warnings
+test:
+    uv run --package bancobot pytest apps/bancobot/tests -q -p no:warnings
+    uv run --package classifier pytest apps/classifier/tests -q -p no:warnings
+    uv run --package fork-engine pytest apps/fork_engine/tests -q -p no:warnings
+    uv run --package exporter pytest apps/exporter/tests -q -p no:warnings
+
 ### Redis Cache ###
 
 # Starts Redis Container
@@ -95,5 +104,5 @@ import-dir DIR:
 inject-messages:
     scripts/injector.py sqlite:///db/messages.db msg_channel
 
-inject-touchpoints:
-    scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt 1308
+inject-touchpoints QNT='1308':
+    scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt {{ QNT }}

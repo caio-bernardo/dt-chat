@@ -1,10 +1,16 @@
 import uuid
-from typing import Sequence
+from typing import Any, Sequence
 
 from langchain.agents import create_agent
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (
+    AIMessage,
+    AnyMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.tools import BaseTool
 from langgraph.types import Checkpointer
 
@@ -46,10 +52,14 @@ class ChatBotBase:
         if self._initial_messages:
             self._initial_messages = []
 
-        msg = self.agent.invoke(
+        result = self.agent.invoke(
             {"messages": messages},  # pyright: ignore[reportArgumentType]
             {"configurable": {"thread_id": thread_id}},
-        )["messages"][-1]
+        )
+
+        tool_source = self._get_tool_sources(result["messages"])
+        msg = result["messages"][-1]
+        msg.additional_kwargs["tool_source"] = tool_source
         return msg
 
     async def aprocess_message(
@@ -66,4 +76,17 @@ class ChatBotBase:
         res = await self.agent.ainvoke(
             {"messages": [message]}, {"configurable": {"thread_id": thread_id}}
         )
-        return res["messages"][-1]
+
+        tool_source = self._get_tool_sources(res["messages"])
+        msg = res["messages"][-1]
+        # includes tools used during thinking process and adds to metadata
+        msg.additional_kwargs["tool_source"] = tool_source
+        return msg
+
+    def _get_tool_sources(self, msgs: Sequence[Any]) -> str:
+        """Extract the tools used from the messages."""
+        tool_source: set[str] = set()
+        for m in msgs:
+            if isinstance(m, ToolMessage):
+                tool_source.add(m.name)
+        return ",".join(tool_source)

@@ -14,6 +14,8 @@
 # timesim = { path = "../libs/timesim" }
 # ///
 
+"""Importer takes a set of json data and produces a database of messages."""
+
 import datetime as dt
 import enum
 import json
@@ -82,6 +84,7 @@ class MessageBase(SQLModel):
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
     )
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSON))
     timing_metadata: TimingMetadata = Field(
         default_factory=dict, sa_column=Column(JSON)
     )

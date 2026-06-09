@@ -18,7 +18,6 @@ import json
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
-import chromadb
 import typer
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
@@ -73,7 +72,7 @@ def lazy_load_documents(files: Iterable[Path]) -> Iterator[Document]:
 
 
 def split_documents(
-    docs: Iterable[Document], size: int = 256, overlap: int = 64
+    docs: Iterable[Document], size: int = 512, overlap: int = 64
 ) -> Sequence[Document]:
     """Split documents into chunks to improve loading speeds, accepts an overlap
     that controls how the splitings is made."""
@@ -106,7 +105,6 @@ def main(
         collection_name=collection_name,
         embedding_function=embeddings,
         persist_directory=persist_dir,
-        client=chromadb.EphemeralClient(),
     )
 
     _ = vector_store.add_documents(documents=clean_docs)

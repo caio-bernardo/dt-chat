@@ -1,10 +1,10 @@
 import uuid
 
 import pytest
+from bancobot.models import MessageCreate, MessageType
 from chatbot import HumanMessage
 from fastapi import HTTPException
-
-from bancobot.models import MessageCreate, MessageType
+from langchain_core.messages import AIMessage
 
 
 @pytest.mark.asyncio
@@ -187,7 +187,7 @@ async def test_save_publish_answer_message(
     bancobot_service, conversation, timing_metadata
 ):
     """Test the full flow: save user message, get AI answer, save and publish it."""
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response"
     )
 
@@ -202,6 +202,7 @@ async def test_save_publish_answer_message(
 
     assert result.type == MessageType.AI
     assert result.content == "Bot response"
+    assert result.meta == {"tool_source": ""}
     assert bancobot_service.producer.publish.called
 
 
@@ -251,7 +252,7 @@ async def test_save_publish_answer_message_first_message_no_parent(
     bancobot_service, conversation, timing_metadata
 ):
     """Test that first message in conversation has no parent_message_id."""
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response"
     )
 
@@ -291,7 +292,7 @@ async def test_save_publish_answer_message_auto_link_parent(
         parent_message_id=None,
     )
 
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response to second"
     )
 
@@ -333,7 +334,7 @@ async def test_save_publish_answer_message_explicit_parent_overrides_auto_link(
         parent_message_id=msg1.id,  # Explicitly set to msg1, not msg2
     )
 
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response"
     )
 
@@ -352,7 +353,7 @@ async def test_save_publish_answer_message_ai_response_links_to_user_message(
     bancobot_service, conversation, timing_metadata
 ):
     """Test that AI response message has the user message as its parent."""
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response"
     )
 
@@ -379,7 +380,7 @@ async def test_save_publish_answer_message_conversation_chain(
     bancobot_service, conversation, timing_metadata
 ):
     """Test a full conversation chain with multiple exchanges."""
-    bancobot_service.agent.process_message.return_value = HumanMessage(
+    bancobot_service.agent.process_message.return_value = AIMessage(
         content="Bot response"
     )
 

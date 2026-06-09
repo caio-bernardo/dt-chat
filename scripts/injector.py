@@ -83,6 +83,7 @@ class MessageBase(SQLModel):
     type: MessageType = Field(
         default=MessageType.Human, sa_column=Column(Enum(MessageType))
     )
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSON))
     timing_metadata: TimingMetadata = Field(
         default_factory=dict, sa_column=Column(JSON)
     )
@@ -174,7 +175,6 @@ def main(
 async def injects_conversation(
     storage: Session, publisher: RedisQueueProducer, channel: str, qnt: int, offset: int
 ):
-
     conversations = storage.exec(
         select(Conversation)
         .order_by(col(Conversation.created_at))

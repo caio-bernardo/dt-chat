@@ -1,6 +1,5 @@
 from typing import Sequence
 
-import chromadb
 from chatbot import BaseChatModel, BaseTool, ChatBotBase, Checkpointer, SystemMessage
 from chatbot.builder import ChatBotBuilder
 from langchain.agents.middleware import AgentMiddleware
@@ -44,13 +43,13 @@ def make_search_documentation_tool(vector_store: VectorStore) -> BaseTool:
     """Make a tool to search for documents inside a vector store"""
 
     @tool(response_format="content_and_artifact")
-    def search_documentation(query: str):
+    def search_full_documentation(query: str):
         """Retrieve bank X's information to help answer a query."""
         retrieved_docs = vector_store.similarity_search(query)
         serialized = "\n\n".join([doc.page_content for doc in retrieved_docs])
         return serialized, retrieved_docs
 
-    return search_documentation
+    return search_full_documentation
 
 
 def get_embeddings():
@@ -67,7 +66,6 @@ def get_vector_store(
         collection_name=collection,
         embedding_function=embeddings,
         persist_directory=persist_directory,
-        client=chromadb.EphemeralClient(),
     )
 
 

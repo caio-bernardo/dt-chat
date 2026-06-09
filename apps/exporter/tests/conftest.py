@@ -48,6 +48,7 @@ def make_message(fixed_dt):
         msg_type: MessageType,
         seconds_offset: int,
         parent_message_id: uuid.UUID | None = None,
+        meta: dict = dict(),
     ) -> Message:
         ts = (fixed_dt + dt.timedelta(seconds=seconds_offset)).timestamp()
         return Message(
@@ -63,6 +64,7 @@ def make_message(fixed_dt):
             },
             created_at=fixed_dt + dt.timedelta(seconds=seconds_offset),
             parent_message_id=parent_message_id,
+            meta=meta,
         )
 
     return _make

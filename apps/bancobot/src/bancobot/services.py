@@ -118,7 +118,7 @@ class BancoBotService:
             )
             message = await self.save_and_publish_message(props, props.timing_metadata)
 
-            answer, answer_metadata = self.answer_message(
+            answer, answer_ts_metadata = self.answer_message(
                 message.conversation_id, message.content, message.timing_metadata
             )
 
@@ -127,10 +127,12 @@ class BancoBotService:
                 content=str(answer.content),
                 parent_message_id=message.id,
                 type=MessageType.AI,
-                timing_metadata=answer_metadata,
+                timing_metadata=answer_ts_metadata,
+                # includes the name of all tools used to produce answer
+                meta={"tool_source": answer.additional_kwargs.get("tool_source", "")},
             )
 
-            return await self.save_and_publish_message(payload, answer_metadata)
+            return await self.save_and_publish_message(payload, answer_ts_metadata)
         except Exception as e:
             raise e
 
@@ -213,13 +215,8 @@ class BancoBotService:
     ) -> Message:
         """Saves Message to Storage"""
 
-        message = Message(
-            conversation_id=props.conversation_id,
-            content=props.content,
-            type=props.type,
-            parent_message_id=props.parent_message_id,
-            timing_metadata=timing_metadata,
-        )
+        message = Message.model_validate(props)
+        message.timing_metadata = timing_metadata
         self.storage.add(message)
         self.storage.commit()
         self.storage.refresh(message)

@@ -84,14 +84,15 @@ class ForkEngine:
                         config = callback(self._storage, tp)
                         # create new task
                         tg.create_task(self.fork(config))
+                except asyncio.CancelledError:
+                    print("Fork cancelled")
+                    break
                 except KeyboardInterrupt:
                     print("Shutdown begin... Press Ctrl-C again to stop execution.")
                     break
                 except Exception as e:
-                    import traceback
-
-                    traceback.print_exc()
                     print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+                    break
             # Close queue connection
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
             await self.queue.unsubscribe(channel)
@@ -106,9 +107,10 @@ class ForkEngine:
         # create a service that can use bancoagent and publish the messages back to the classifier
         # + Generates a new session connection for this fork, so each fork has a
         # database connection that will be closed on exit.
+        # WARN: "twin_bot_type" and "branched_message_id" are deprecated, please use the new keys
         metadata = {
             "catalyst_message_id": str(config.branched_message_id),
-            "twin_bot_type": config.label,
+            "bot_label": config.label,
         }
         config.userbot_builder.asender = BancobotProcedureCallSender(
             config.parent_conversation,
