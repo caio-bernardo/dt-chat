@@ -119,7 +119,7 @@ def run(
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = DB_URL,
-    model: str = "openai:gpt-4.1-mini,openai:gpt-5-nano,openai:gpt-5.4-nano",
+    model: str = "openai:gpt-4.1-mini,openai:gpt-5.4-nano",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).

@@ -3,6 +3,8 @@ from typing import Literal
 from langchain.chat_models import BaseChatModel, init_chat_model
 from pydantic import BaseModel
 
+from classifier.log import add_log_entry
+
 # from langchain.agents import create_agent
 
 
@@ -10,11 +12,6 @@ class TouchpointItem(BaseModel):
     subtipo: str
     descricao: str
     exemplo: str
-
-
-def save_to_log(data: str):
-    with open("log.csv", "a") as f:
-        f.write(data + "\n")
 
 
 class TouchpointField(BaseModel):
@@ -203,15 +200,38 @@ class DemocraticClassifierAgent(ClassifierAgent):
         self, msg: str, actor: str, categories: list[TouchpointItem]
     ) -> str:
         """Classifica os touchpoints com base em um sistema de voto, cada modelo faz sua classificação e a classe mais votada ganha"""
+
+        ## Run asyncronous tasks independently and uses
+        import asyncio
+
         agents = {name: self.init_agent(model) for name, model in self._models.items()}
 
-        subtipos = [cat.subtipo for cat in categories]
-        activities = []
-        debug_str = ""
-        for name, model in agents.items():
+        subtipos = {cat.subtipo for cat in categories}
+        activities: list[str] = []
+
+        async def _run_one(name: str, model):
             prompt = self._build_prompt(msg, actor, categories)
-            response: TouchpointResponse = await model.ainvoke(prompt)  # pyright: ignore[reportAssignmentType]
-            debug_str += f";{response.model_dump_json()}"
+            response: TouchpointResponse = await model.ainvoke(  # pyright: ignore[reportAssignmentType]
+                prompt
+            )
+            return name, response
+
+        # Executa as chamadas aos modelos em paralelo e as resume no final
+        tasks = [
+            asyncio.create_task(_run_one(name, model)) for name, model in agents.items()
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        debug_results = {}
+        for result in results:
+            # Se algum modelo falhar, apenas ignoramos e seguimos com os demais
+            if isinstance(result, Exception):
+                print(f"DEBUG: model invocation failed: {result}")
+                continue
+
+            name, response = result  # pyright: ignore[reportGeneralTypeIssues]
+            debug_results[name] = response.model_dump(mode="json")
+
             # Ignore models that failed to categorize
             if len(response.touchpoints) > 0:
                 activity = response.touchpoints[0].touchpoint
@@ -219,12 +239,16 @@ class DemocraticClassifierAgent(ClassifierAgent):
                 # variantes de enum para aumetar a tolerância a falhas, mas com o
                 # sistema de votação a chance de falha cai bastante.
                 if activity in subtipos:
-                    print(f"DEBUG: {name} -> {activity}")
+                    # print(f"DEBUG: {name} -> {activity}")
                     activities.append(activity)
                 else:
                     print(f"DEBUG: {name} produced invalid touchpoint: {activity}")
 
-        save_to_log(f"{actor};{msg}{debug_str}\n")
+        add_log_entry(
+            actor,
+            msg,
+            debug_results,
+        )
         # If all models failed to categorize a touchpoint we fail
         if len(activities) == 0:
             return "INVALID-TOUCHPOINT-SYSTEM"
