@@ -1,6 +1,6 @@
 from sqlmodel import Session
 
-from classifier.agent import ClassifierAgent
+from classifier.agent import ClassifierAgent, TouchpointItem
 from classifier.models import Conversation, Message, Touchpoint
 
 
@@ -12,7 +12,7 @@ class ClassifierService:
         self.storage = storage
 
     async def create_touchpoint(
-        self, msg: Message, actor: str, tp_list: list[str]
+        self, msg: Message, actor: str, tp_list: list[TouchpointItem]
     ) -> Touchpoint:
         """Creates a new touchpoint requesting to the agent"""
         activity = await self.agent.classify(msg.content, actor, tp_list)
@@ -41,7 +41,7 @@ class ClassifierService:
         self.storage.refresh(touchpoint)
 
     async def create_and_save_touchpoint(
-        self, msg: Message, actor: str, tp_list: list[str]
+        self, msg: Message, actor: str, tp_list: list[TouchpointItem]
     ) -> Touchpoint:
         """Both creates and saves the touchpoint, see associated functions above."""
         tp = await self.create_touchpoint(msg, actor, tp_list)

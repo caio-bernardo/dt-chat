@@ -12,10 +12,10 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 from typer import Typer
 
-from classifier.agent import ClassifierAgent
+from classifier.agent import DemocraticClassifierAgent
 from classifier.database import create_db_and_tables, get_session
 from classifier.models import Conversation, Message
-from classifier.services import ClassifierService
+from classifier.services import ClassifierService, TouchpointItem
 
 load_dotenv()
 
@@ -26,18 +26,19 @@ TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
 DB_URL: str = os.environ["TOUCHPOINT_DATABASE_URL"]
 
 
-def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
-    return ClassifierAgent(model, temperature)
+def get_agent(model: str, temperature=0.0) -> DemocraticClassifierAgent:
+    models = list(filter(None, model.split(",")))
+    return DemocraticClassifierAgent(models, temperature)
 
 
 def get_redis() -> Redis:
     return Redis(port=int(os.environ["REDIS_PORT"]))
 
 
-def load_tp_list(path: str) -> list[str]:
+def load_tp_list(path: str) -> list[TouchpointItem]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-        return [item.get("subtipo", "") for item in data if "subtipo" in item]
+        return [TouchpointItem.model_validate(item) for item in data]
 
 
 class ClassifierConfig(BaseModel):
@@ -46,8 +47,8 @@ class ClassifierConfig(BaseModel):
     db_saver: str
     stream: bool
     stream_name: str
-    ai_touchpoint_list: list[str]
-    human_touchpoint_list: list[str]
+    ai_touchpoint_list: list[TouchpointItem]
+    human_touchpoint_list: list[TouchpointItem]
 
 
 async def arun(config: ClassifierConfig):
@@ -118,7 +119,7 @@ def run(
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = DB_URL,
-    model: str = "gpt-4.1-mini",
+    model: str = "openai:gpt-4.1-mini,openai:gpt-5-nano,openai:gpt-5.4-nano",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).
