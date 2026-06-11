@@ -58,30 +58,22 @@ class ClassifierAgent:
         k = 3
         return f"""\
         # Objetivo
-        Analisar a mensagem de um `{
-            actor
-        }` em um chatbot bancário e identificar até `{
+        Analisar a mensagem de um `{actor}` em um chatbot bancário e identificar até `{
             k
         }` touchpoints correspondentes, usando exclusivamente os touchpoints fornecidos.
 
-        # Contexto
-        **Mensagem analisada**
-            `{actor}`: `{content}`
+        ]
 
-            **Touchpoints disponíveis**
-            [{",\n".join([item.model_dump_json() for item in categories])}]
-
-
-            # Instruções
-            - Escolha **até** `{
+        # Instruções
+        - Escolha **até** `{
             k
         }` touchpoints** da lista acima que melhor descrevem a mensagem.
-            - Use **exclusivamente** touchpoints presentes em `**Touchpoints disponíveis**`.
-            - Se nenhum touchpoint se aplicar perfeitamente, escolha o **mais próximo**.
-            - Para cada touchpoint escolhido, atribua um rótulo de confiança: `"alta"`, `"média"` ou `"baixa"`.
-            - Liste os touchpoints escolhidos em uma **ordem total e determinística**.
-            - Primeiro, ordene por confiança, nesta ordem: `"alta"`, `"média"`, `"baixa"`.
-            - Para touchpoints com o mesmo nível de confiança, aplique os seguintes critérios de desempate, nesta ordem:
+        - Use **exclusivamente** touchpoints presentes em `**Touchpoints disponíveis**`.
+        - Se nenhum touchpoint se aplicar perfeitamente, escolha o **mais próximo**.
+        - Para cada touchpoint escolhido, atribua um rótulo de confiança: `"alta"`, `"média"` ou `"baixa"`.
+        - Liste os touchpoints escolhidos em uma **ordem total e determinística**.
+        - Primeiro, ordene por confiança, nesta ordem: `"alta"`, `"média"`, `"baixa"`.
+        - Para touchpoints com o mesmo nível de confiança, aplique os seguintes critérios de desempate, nesta ordem:
             1. **Maior aderência à intenção principal da mensagem**: o touchpoint que melhor representa o pedido, problema ou objetivo central do `{
             actor
         }` deve vir antes.
@@ -100,66 +92,66 @@ class ClassifierAgent:
             ## Explicação geral
             - Inclua um único campo externo `"explicacao_geral"`, fora da lista de touchpoints.
             - A `"explicacao_geral"` deve justificar, de maneira objetiva e clara:
-            - por que os touchpoints escolhidos representam adequadamente a mensagem analisada;
-            - por que os níveis de confiança atribuídos são apropriados.
-            - A explicação deve ter **no máximo 3 frases e/ou até 100 palavras**.
-            - Seja sucinto e objetivo, sem repetições.
-            - Não cite regras, não repita instruções e não seja excessivamente genérico.
-            - A explicação deve cobrir brevemente **todos os touchpoints selecionados em conjunto**.
+                - por que os touchpoints escolhidos representam adequadamente a mensagem analisada;
+                - por que os níveis de confiança atribuídos são apropriados.
+                - A explicação deve ter **no máximo 3 frases e/ou até 100 palavras**.
+                - Seja sucinto e objetivo, sem repetições.
+                - Não cite regras, não repita instruções e não seja excessivamente genérico.
+                - A explicação deve cobrir brevemente **todos os touchpoints selecionados em conjunto**.
 
-            ## Validação de entrada
-            - Se `**Touchpoints disponíveis**` estiver vazio, ausente ou malformado;
-            - ou se `{k}` não for um inteiro positivo;
-            - ou se `**Mensagem analisada**` estiver vazio ou ausente;
-            - retorne um objeto JSON válido com:
+        ## Validação de entrada
+        - Se `**Touchpoints disponíveis**` estiver vazio, ausente ou malformado;
+        - ou se `{k}` não for um inteiro positivo;
+        - ou se `**Mensagem analisada**` estiver vazio ou ausente;
+        - retorne um objeto JSON válido com:
 
-            ```json
-            {{
-            "touchpoints": [],
-            "explicacao_geral": "Entrada inválida para classificação."
-            }}
-            ```
+        ```json
+        {{
+        "touchpoints": [],
+        "explicacao_geral": "Entrada inválida para classificação."
+        }}
+        ```
 
-            # Restrições de saída
-            - Retorne **apenas** um objeto JSON válido, sem qualquer texto adicional fora do JSON.
-            - O objeto JSON deve conter **exatamente** os campos exigidos.
-            - A ordem dos campos no objeto JSON não é relevante.
+        # Restrições de saída
+        - Retorne **apenas** um objeto JSON válido, sem qualquer texto adicional fora do JSON.
+        - O objeto JSON deve conter **exatamente** os campos exigidos.
+        - A ordem dos campos no objeto JSON não é relevante.
 
-            # Formato de saída
-            Retorne um objeto JSON válido com a seguinte estrutura:
+        # Formato de saída
+        Retorne um objeto JSON válido com a seguinte estrutura:
 
-            ```json
-            {{
-            "touchpoints": [
-                {{
-                "touchpoint": "NOME DO TOUCHPOINT EM MAIÚSCULAS",
-                "confianca": "alta"
-                }}
-            ],
-            "explicacao_geral": "Justificativa geral breve para a escolha dos touchpoints e dos níveis de confiança."
-            }}
-            ```
+        ```json
+        {{
+        "touchpoints": [
+        {{
+        "touchpoint": "NOME DO TOUCHPOINT EM MAIÚSCULAS",
+        "confianca": "alta"
+        }}
+        ],
+        "explicacao_geral": "Justificativa geral breve para a escolha dos touchpoints e dos níveis de confiança."
+        }}
+        ```
 
-            ## Requisitos do formato
-            - O objeto JSON deve conter obrigatoriamente os campos `"touchpoints"` e `"explicacao_geral"`.
-            - `"touchpoints"` deve ser uma lista de objetos.
-            - Cada objeto em `"touchpoints"` deve conter **exclusivamente** os campos `"touchpoint"` e `"confianca"`.
-            - `"touchpoint"` deve ser um dos touchpoints fornecidos em `**Touchpoints disponíveis**`, escrito em letras maiúsculas.
-            - `"confianca"` deve ser exatamente um destes valores: `"alta"`, `"média"` ou `"baixa"`.
-            - `"explicacao_geral"` deve ficar fora da lista `"touchpoints"` e respeitar o limite de até 3 frases e/ou 100 palavras.
+        ## Requisitos do formato
+        - O objeto JSON deve conter obrigatoriamente os campos `"touchpoints"` e `"explicacao_geral"`.
+        - `"touchpoints"` deve ser uma lista de objetos.
+        - Cada objeto em `"touchpoints"` deve conter **exclusivamente** os campos `"touchpoint"` e `"confianca"`.
+        - `"touchpoint"` deve ser um dos touchpoints fornecidos em `**Touchpoints disponíveis**`, escrito em letras maiúsculas.
+        - `"confianca"` deve ser exatamente um destes valores: `"alta"`, `"média"` ou `"baixa"`.
+        - `"explicacao_geral"` deve ficar fora da lista `"touchpoints"` e respeitar o limite de até 3 frases e/ou 100 palavras.
 
-            ## Caso de entrada inválida
-            Se nenhum touchpoint for selecionado por entrada inválida, retorne:
+        ## Caso de entrada inválida
+        Se nenhum touchpoint for selecionado por entrada inválida, retorne:
 
-            ```json
-            {{
-            "touchpoints": [],
-            "explicacao_geral": "Entrada inválida para classificação."
-            }}
-            ```
+        ```json
+        {{
+        "touchpoints": [],
+        "explicacao_geral": "Entrada inválida para classificação."
+        }}
+        ```
 
-            # Verificação final
-            Antes de responder, confirme que:
+        # Verificação final
+        Antes de responder, confirme que:
             - os touchpoints selecionados vieram exclusivamente de `**Touchpoints disponíveis**`;
             - os nomes dos touchpoints estão em maiúsculas;
             - os níveis de confiança são apenas `"alta"`, `"média"` ou `"baixa"`;
@@ -169,7 +161,14 @@ class ClassifierAgent:
             - `"explicacao_geral"` está fora da lista, cobre todas as escolhas e respeita o limite de tamanho;
             - a resposta final contém somente o JSON válido solicitado.
 
-            REPOSTA:
+        # Contexto
+        **Mensagem analisada**
+        `{actor}`: `{content}`
+
+        **Touchpoints disponíveis**
+        [{",\n".join([item.model_dump_json() for item in categories])}
+
+        REPOSTA:
         """
 
     async def classify(

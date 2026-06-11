@@ -19,10 +19,10 @@
 import datetime as dt
 import enum
 import json
-import random
 import uuid
 from typing import Annotated, Dict, Optional
 
+import pandas as pd
 import typer
 from sqlmodel import (
     JSON,
@@ -36,7 +36,7 @@ from sqlmodel import (
 )
 from timesim import TimeSimulationConfig, TimingMetadata
 
-PERSONAS_FILE: str = "data/personas.json"
+PERSONAS_FILE: str = "data/personas/interactions_export-2_metadata.csv"
 
 PAUSE_PROBABILITY: float = 0.05
 PAUSE_TIME_RANGE_S: tuple[float, float] = (60.0, 3600.0)
@@ -110,44 +110,27 @@ class MessageCreate(MessageBase):
     pass
 
 
-def get_typing_speed_and_thinking_range(duration: str) -> tuple[float, tuple[int, int]]:
-    match duration:
-        case "lenta":
-            typing_speed = random.uniform(10, 24)
-            thinking_range = (8, 35)
-        case "media":
-            typing_speed = random.uniform(25, 54)
-            thinking_range = (2, 12)
-        case "rapida":
-            typing_speed = random.uniform(55, 90)
-            thinking_range = (2, 7)
-        case _:
-            typing_speed = random.uniform(25, 54)
-            thinking_range = (2, 12)
-    return typing_speed, thinking_range
-
-
 def create_persona_metadata_from_name(name: str, temporal_offset: dt.timedelta):
-    with open(PERSONAS_FILE, "r", encoding="utf-8") as f:
-        personas = json.load(f)
-        id = name.removeprefix("persona_")
-        data = personas[name]
+    metadata = pd.read_csv(PERSONAS_FILE)
 
-        typing_speed, thinking_range = get_typing_speed_and_thinking_range(
-            data["duração"]
-        )
+    persona_row = metadata[metadata["filename"] == name]
+    persona = persona_row["prompt"].iloc[0]  # pyright: ignore[reportAttributeAccessIssue]
+    typing_speed = float(persona_row["typing_speed_wpm"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_min = int(persona_row["thinking_min_seconds"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_max = int(persona_row["thinking_max_seconds"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_range = (thinking_min, thinking_max)
 
-        return {
-            "persona": str(data["persona"]),
-            "timesim": TimeSimulationConfig(
-                temporal_offset=temporal_offset,
-                pause_probability=PAUSE_PROBABILITY,
-                pause_time_range=PAUSE_TIME_RANGE_S,
-                typing_speed_wpm=typing_speed,
-                thinking_time_range=thinking_range,
-                simulate_delays=False,
-            ).model_dump(mode="json"),
-        }
+    return {
+        "persona": str(persona),
+        "timesim": TimeSimulationConfig(
+            temporal_offset=temporal_offset,
+            pause_probability=PAUSE_PROBABILITY,
+            pause_time_range=PAUSE_TIME_RANGE_S,
+            typing_speed_wpm=typing_speed,
+            thinking_time_range=thinking_range,
+            simulate_delays=False,
+        ).model_dump(mode="json"),
+    }
 
 
 def calculate_temporal_offset(data):
@@ -193,8 +176,9 @@ def main(
 
         # DONE: create metadata for a conversation
         temporal_offset = calculate_temporal_offset(data)
+        # Use only the filename (no directories) when looking up persona metadata
         metadata = create_persona_metadata_from_name(
-            data["persona_id"], temporal_offset
+            input_file_path.rsplit("/", 1)[-1], temporal_offset
         )
         # DONE: create a conversation
         props = ConversationCreate(meta=metadata)

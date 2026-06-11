@@ -87,7 +87,7 @@ async def arun(config: ClassifierConfig):
                 message, **cases[message.type]
             )
 
-            print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
+            # print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
 
             # INFO: we do not repass messages comming from the fork, or else we
             # may have a recursive explosion of messages made by the forkers
