@@ -96,7 +96,7 @@ import-dir DIR:
     set -e
     for file in {{ DIR }}/*.json; do
         echo Processing $file
-        scripts/importer.py $file --quiet --publish --redis-queue-key=$MSG_CHANNEL --redis-url=redis://localhost:$REDIS_PORT
+        scripts/importer.py $file --quiet
         echo Finished $file
     done
 

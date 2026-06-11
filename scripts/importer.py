@@ -23,9 +23,7 @@ import random
 import uuid
 from typing import Annotated, Dict, Optional
 
-import redis
 import typer
-from pubsub import QueueMessage
 from sqlmodel import (
     JSON,
     Column,
@@ -168,18 +166,9 @@ def main(
     ],
     db_conn: Annotated[
         str, typer.Option(help="url for the database connection")
-    ] = "sqlite:///messages.db",
+    ] = "sqlite:///db/messages.db",
     quiet: Annotated[bool, typer.Option(help="suppresses log messages")] = False,
     save: Annotated[bool, typer.Option(help="allows saving in storage")] = True,
-    publish: Annotated[
-        bool, typer.Option(help="publish messages to a Redis stream")
-    ] = False,
-    redis_queue_key: Annotated[
-        str, typer.Option(help="key for the Redis queue. Depends on --publish")
-    ] = "",
-    redis_url: Annotated[
-        str, typer.Option(help="url for the Redis connection. Depends on --publish")
-    ] = "redis://localhost:6379",
 ) -> None:
     """
     Imports a conversation from a json file and inserts to a database.
@@ -191,10 +180,6 @@ def main(
         if save:
             SQLModel.metadata.create_all(engine)
         session = Session(engine)
-
-        redis_client = None
-        if publish:
-            redis_client = redis.Redis.from_url(redis_url)
 
         # DONE: read a json file
         with open(input_file_path, "r", encoding="utf-8") as file:
@@ -212,15 +197,6 @@ def main(
         if not quiet:
             print(f"[INFO] Add Conversation: {conversation}")
         session.add(conversation)
-
-        if publish:
-            conv_payload: QueueMessage = {
-                "origin": "real_bancobot",
-                "model_type": "conversation",
-                "content": conversation.model_dump(mode="json"),
-            }
-            assert redis_client is not None
-            redis_client.lpush(redis_queue_key, json.dumps(conv_payload))
 
         # DONE: iterate over messages
         previous_message_id = None
@@ -258,15 +234,6 @@ def main(
             if not quiet:
                 print(f"[INFO] Add Message: {msg}")
             session.add(msg)
-            if publish:
-                msg_payload: QueueMessage = {
-                    "origin": "real_bancobot",
-                    "model_type": "message",
-                    "content": msg.model_dump(mode="json"),
-                }
-                assert redis_client is not None
-                redis_client.lpush(redis_queue_key, json.dumps(msg_payload))
-
             previous_message_id = msg.id
 
         # DONE: save everything on the database
