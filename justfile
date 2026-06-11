@@ -95,14 +95,12 @@ import-dir DIR:
     #!/usr/bin/env sh
     set -e
     for file in {{ DIR }}/*.json; do
-        echo Processing $file
-        scripts/importer.py $file --quiet --publish --redis-queue-key=$MSG_CHANNEL --redis-url=redis://localhost:$REDIS_PORT
-        echo Finished $file
+        scripts/importer.py $file --quiet
     done
 
 # injects messages on the classifier
-inject-messages:
-    scripts/injector.py sqlite:///db/messages.db msg_channel
+inject-messages QNT='300':
+    scripts/injector.py sqlite:///db/sim-300/300-messages.db msg_channel --qnt {{ QNT }}
 
 inject-touchpoints QNT='1308':
     scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt {{ QNT }}

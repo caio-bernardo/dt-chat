@@ -19,13 +19,11 @@
 import datetime as dt
 import enum
 import json
-import random
 import uuid
 from typing import Annotated, Dict, Optional
 
-import redis
+import pandas as pd
 import typer
-from pubsub import QueueMessage
 from sqlmodel import (
     JSON,
     Column,
@@ -38,7 +36,7 @@ from sqlmodel import (
 )
 from timesim import TimeSimulationConfig, TimingMetadata
 
-PERSONAS_FILE: str = "data/personas.json"
+PERSONAS_FILE: str = "data/personas/interactions_export-2_metadata.csv"
 
 PAUSE_PROBABILITY: float = 0.05
 PAUSE_TIME_RANGE_S: tuple[float, float] = (60.0, 3600.0)
@@ -112,44 +110,27 @@ class MessageCreate(MessageBase):
     pass
 
 
-def get_typing_speed_and_thinking_range(duration: str) -> tuple[float, tuple[int, int]]:
-    match duration:
-        case "lenta":
-            typing_speed = random.uniform(10, 24)
-            thinking_range = (8, 35)
-        case "media":
-            typing_speed = random.uniform(25, 54)
-            thinking_range = (2, 12)
-        case "rapida":
-            typing_speed = random.uniform(55, 90)
-            thinking_range = (2, 7)
-        case _:
-            typing_speed = random.uniform(25, 54)
-            thinking_range = (2, 12)
-    return typing_speed, thinking_range
-
-
 def create_persona_metadata_from_name(name: str, temporal_offset: dt.timedelta):
-    with open(PERSONAS_FILE, "r", encoding="utf-8") as f:
-        personas = json.load(f)
-        _, id = name.split("_")
-        data = personas[id]
+    metadata = pd.read_csv(PERSONAS_FILE)
 
-        typing_speed, thinking_range = get_typing_speed_and_thinking_range(
-            data["duração"]
-        )
+    persona_row = metadata[metadata["filename"] == name]
+    persona = persona_row["prompt"].iloc[0]  # pyright: ignore[reportAttributeAccessIssue]
+    typing_speed = float(persona_row["typing_speed_wpm"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_min = int(persona_row["thinking_min_seconds"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_max = int(persona_row["thinking_max_seconds"].iloc[0])  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
+    thinking_range = (thinking_min, thinking_max)
 
-        return {
-            "persona": str(data["persona"]),
-            "timesim": TimeSimulationConfig(
-                temporal_offset=temporal_offset,
-                pause_probability=PAUSE_PROBABILITY,
-                pause_time_range=PAUSE_TIME_RANGE_S,
-                typing_speed_wpm=typing_speed,
-                thinking_time_range=thinking_range,
-                simulate_delays=False,
-            ).model_dump(mode="json"),
-        }
+    return {
+        "persona": str(persona),
+        "timesim": TimeSimulationConfig(
+            temporal_offset=temporal_offset,
+            pause_probability=PAUSE_PROBABILITY,
+            pause_time_range=PAUSE_TIME_RANGE_S,
+            typing_speed_wpm=typing_speed,
+            thinking_time_range=thinking_range,
+            simulate_delays=False,
+        ).model_dump(mode="json"),
+    }
 
 
 def calculate_temporal_offset(data):
@@ -168,18 +149,9 @@ def main(
     ],
     db_conn: Annotated[
         str, typer.Option(help="url for the database connection")
-    ] = "sqlite:///messages.db",
+    ] = "sqlite:///db/messages.db",
     quiet: Annotated[bool, typer.Option(help="suppresses log messages")] = False,
     save: Annotated[bool, typer.Option(help="allows saving in storage")] = True,
-    publish: Annotated[
-        bool, typer.Option(help="publish messages to a Redis stream")
-    ] = False,
-    redis_queue_key: Annotated[
-        str, typer.Option(help="key for the Redis queue. Depends on --publish")
-    ] = "",
-    redis_url: Annotated[
-        str, typer.Option(help="url for the Redis connection. Depends on --publish")
-    ] = "redis://localhost:6379",
 ) -> None:
     """
     Imports a conversation from a json file and inserts to a database.
@@ -192,18 +164,21 @@ def main(
             SQLModel.metadata.create_all(engine)
         session = Session(engine)
 
-        redis_client = None
-        if publish:
-            redis_client = redis.Redis.from_url(redis_url)
-
         # DONE: read a json file
         with open(input_file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
 
+        if not data["messages"]:
+            print(
+                f"[INFO] no messages to process in this conversation: {input_file_path}"
+            )
+            return
+
         # DONE: create metadata for a conversation
         temporal_offset = calculate_temporal_offset(data)
+        # Use only the filename (no directories) when looking up persona metadata
         metadata = create_persona_metadata_from_name(
-            data["persona_id"], temporal_offset
+            input_file_path.rsplit("/", 1)[-1], temporal_offset
         )
         # DONE: create a conversation
         props = ConversationCreate(meta=metadata)
@@ -212,15 +187,6 @@ def main(
         if not quiet:
             print(f"[INFO] Add Conversation: {conversation}")
         session.add(conversation)
-
-        if publish:
-            conv_payload: QueueMessage = {
-                "origin": "real_bancobot",
-                "model_type": "conversation",
-                "content": conversation.model_dump(mode="json"),
-            }
-            assert redis_client is not None
-            redis_client.lpush(redis_queue_key, json.dumps(conv_payload))
 
         # DONE: iterate over messages
         previous_message_id = None
@@ -258,15 +224,6 @@ def main(
             if not quiet:
                 print(f"[INFO] Add Message: {msg}")
             session.add(msg)
-            if publish:
-                msg_payload: QueueMessage = {
-                    "origin": "real_bancobot",
-                    "model_type": "message",
-                    "content": msg.model_dump(mode="json"),
-                }
-                assert redis_client is not None
-                redis_client.lpush(redis_queue_key, json.dumps(msg_payload))
-
             previous_message_id = msg.id
 
         # DONE: save everything on the database
