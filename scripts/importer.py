@@ -130,8 +130,8 @@ def get_typing_speed_and_thinking_range(duration: str) -> tuple[float, tuple[int
 def create_persona_metadata_from_name(name: str, temporal_offset: dt.timedelta):
     with open(PERSONAS_FILE, "r", encoding="utf-8") as f:
         personas = json.load(f)
-        _, id = name.split("_")
-        data = personas[id]
+        id = name.removeprefix("persona_")
+        data = personas[name]
 
         typing_speed, thinking_range = get_typing_speed_and_thinking_range(
             data["duração"]
@@ -184,6 +184,12 @@ def main(
         # DONE: read a json file
         with open(input_file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
+
+        if not data["messages"]:
+            print(
+                f"[INFO] no messages to process in this conversation: {input_file_path}"
+            )
+            return
 
         # DONE: create metadata for a conversation
         temporal_offset = calculate_temporal_offset(data)

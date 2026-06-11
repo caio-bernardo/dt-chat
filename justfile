@@ -95,9 +95,7 @@ import-dir DIR:
     #!/usr/bin/env sh
     set -e
     for file in {{ DIR }}/*.json; do
-        echo Processing $file
         scripts/importer.py $file --quiet
-        echo Finished $file
     done
 
 # injects messages on the classifier
