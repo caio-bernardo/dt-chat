@@ -57,16 +57,16 @@ class ClassifierAgent:
         """Returns the prompt for the agent with injections"""
         k = 3
         return f"""\
-            # Objetivo
-            Analisar a mensagem de um `{
+        # Objetivo
+        Analisar a mensagem de um `{
             actor
         }` em um chatbot bancário e identificar até `{
             k
         }` touchpoints correspondentes, usando exclusivamente os touchpoints fornecidos.
 
-            # Contexto
-            **Mensagem analisada**
-            `{actor}: {content}`
+        # Contexto
+        **Mensagem analisada**
+            `{actor}`: `{content}`
 
             **Touchpoints disponíveis**
             [{",\n".join([item.model_dump_json() for item in categories])}]
@@ -177,7 +177,7 @@ class ClassifierAgent:
     ) -> str:
         """Classify a message from an actor within a category. Returns the selected category."""
         prompt = self._build_prompt(msg, actor, categories)
-        response: TouchpointResponse = await self._model.ainvoke(prompt)
+        response: TouchpointResponse = await self._model.ainvoke(prompt)  # pyright: ignore[reportAssignmentType]
 
         add_log_entry(actor, msg, self._model_name, response.model_dump(mode="json"))
 
@@ -185,7 +185,7 @@ class ClassifierAgent:
             return "INVALID-TOUCHPOINT-SYSTEM"
 
         subtipos = [item.subtipo for item in categories]
-        activity = response.touchpoints[0].subtipo
+        activity = response.touchpoints[0].touchpoint.upper()
         if activity not in subtipos:
             return "INVALID-TOUCHPOINT-SYSTEM"
 
