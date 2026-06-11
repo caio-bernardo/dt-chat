@@ -11,7 +11,8 @@ LOG_FILE: str = "classifier-log.csv"
 def add_log_entry(
     actor: str,
     msg: str,
-    models_answers: Dict[str, Any],
+    model_name: str,
+    data: Dict[str, Any],
     file_path: str | Path = LOG_FILE,
 ) -> None:
     """Append a log entry to a CSV file containing a list of entries."""
@@ -23,7 +24,7 @@ def add_log_entry(
 
     with open(path, "a", encoding="utf-8") as f:
         if is_new_file:
-            f.write("actor;msg;timestamp;models_answers\n")
+            f.write("actor;msg;timestamp;model,data\n")
         f.write(
-            f"{actor};{msg_escaped};{datetime.now().isoformat()};{json.dumps(models_answers, ensure_ascii=False)}\n",
+            f"{actor};{msg_escaped};{datetime.now().isoformat()};{model_name};{json.dumps(data, ensure_ascii=False)}\n",
         )

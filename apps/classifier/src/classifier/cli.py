@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 from typer import Typer
 
-from classifier.agent import DemocraticClassifierAgent
+from classifier.agent import ClassifierAgent
 from classifier.database import create_db_and_tables, get_session
 from classifier.models import Conversation, Message
 from classifier.services import ClassifierService, TouchpointItem
@@ -26,9 +26,8 @@ TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
 DB_URL: str = os.environ["TOUCHPOINT_DATABASE_URL"]
 
 
-def get_agent(model: str, temperature=0.0) -> DemocraticClassifierAgent:
-    models = list(filter(None, model.split(",")))
-    return DemocraticClassifierAgent(models, temperature)
+def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
+    return ClassifierAgent(model, temperature)
 
 
 def get_redis() -> Redis:
@@ -116,10 +115,10 @@ async def arun(config: ClassifierConfig):
 def run(
     ai_touchpoints_file_path: str,
     human_touchpoints_file_path: str,
+    model: str = "openai:gpt-5.4-nano",
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = DB_URL,
-    model: str = "openai:gpt-4.1-mini,openai:gpt-5.4-nano",
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).

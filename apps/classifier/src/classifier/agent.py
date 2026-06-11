@@ -1,3 +1,4 @@
+import os
 from typing import Literal
 
 from langchain.chat_models import BaseChatModel, init_chat_model
@@ -6,6 +7,8 @@ from pydantic import BaseModel
 from classifier.log import add_log_entry
 
 # from langchain.agents import create_agent
+
+OLLAMA_BASE_URL = os.environ["OLLAMA_BASE_URL"]
 
 
 class TouchpointItem(BaseModel):
@@ -29,49 +32,22 @@ class ClassifierAgent:
 
     def __init__(self, model: str, temperature: float = 0.0):
         # Create agent with restrict token usage
-        self._model = init_chat_model(model, max_tokens=100, temperature=temperature)
+        self._model_name = model
+        if model.startswith("ollama:"):
+            self._model = self.custom_init_model(
+                init_chat_model(
+                    model,
+                    max_tokens=100,
+                    temperature=temperature,
+                    base_url=OLLAMA_BASE_URL,
+                )
+            )
+        else:
+            self._model = self.custom_init_model(
+                init_chat_model(model, max_tokens=100, temperature=temperature)
+            )
 
-    def _build_prompt(
-        self, content: str, actor: str, categories: list[TouchpointItem]
-    ) -> str:
-        """Returns the prompt for the agent with injections"""
-        return f"""\
-                Analise a seguinte mensagem de um {actor.lower()} em um chatbot bancário e identifique
-                o TOUCHPOINT correspondente usando EXCLUSIVAMENTE os touchpoints listados abaixo.
-
-                MENSAGEM:
-                {actor}: {content}
-
-                TOUCHPOINTS DISPONÍVEIS:
-                [{",\n".join([item.model_dump_json() for item in categories])}]
-
-                INSTRUÇÕES:
-                - Escolha APENAS UM touchpoint da lista acima que melhor descreve a mensagem
-                - Se nenhum touchpoint se aplicar perfeitamente, escolha o mais próximo
-                - Use SEMPRE letras maiúsculas
-                - Retorne APENAS o nome do touchpoint, sem explicações adicionais
-
-                TOUCHPOINT:"""
-
-    async def classify(
-        self, msg: str, actor: str, categories: list[TouchpointItem]
-    ) -> str:
-        """Classify a message from an actor within a category. Returns the selected category."""
-        prompt = self._build_prompt(msg, actor, categories)
-        response = await self._model.ainvoke(prompt)
-        category = str(response.content).strip().strip("'").strip('"').upper()
-        if category not in categories:
-            raise ValueError(f"Produced Invalid Category: {category}")
-        return category
-
-
-class DemocraticClassifierAgent(ClassifierAgent):
-    """Initialize N models and attempts to classify the data, the most voted touchpoints wins."""
-
-    def __init__(self, llms: list[str], temperature: float = 0.0):
-        self._models = {llm: init_chat_model(llm) for llm in llms}
-
-    def init_agent(self, model: BaseChatModel):
+    def custom_init_model(self, model: BaseChatModel):
         model_wth_struct = model.with_structured_output(TouchpointResponse)
         return model_wth_struct
 
@@ -199,58 +175,94 @@ class DemocraticClassifierAgent(ClassifierAgent):
     async def classify(
         self, msg: str, actor: str, categories: list[TouchpointItem]
     ) -> str:
-        """Classifica os touchpoints com base em um sistema de voto, cada modelo faz sua classificação e a classe mais votada ganha"""
+        """Classify a message from an actor within a category. Returns the selected category."""
+        prompt = self._build_prompt(msg, actor, categories)
+        response: TouchpointResponse = await self._model.ainvoke(prompt)
 
-        ## Run asyncronous tasks independently and uses
-        import asyncio
+        add_log_entry(actor, msg, self._model_name, response.model_dump(mode="json"))
 
-        agents = {name: self.init_agent(model) for name, model in self._models.items()}
-
-        subtipos = {cat.subtipo for cat in categories}
-        activities: list[str] = []
-
-        async def _run_one(name: str, model):
-            prompt = self._build_prompt(msg, actor, categories)
-            response: TouchpointResponse = await model.ainvoke(  # pyright: ignore[reportAssignmentType]
-                prompt
-            )
-            return name, response
-
-        # Executa as chamadas aos modelos em paralelo e as resume no final
-        tasks = [
-            asyncio.create_task(_run_one(name, model)) for name, model in agents.items()
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        debug_results = {}
-        for result in results:
-            # Se algum modelo falhar, apenas ignoramos e seguimos com os demais
-            if isinstance(result, Exception):
-                print(f"DEBUG: model invocation failed: {result}")
-                continue
-
-            name, response = result  # pyright: ignore[reportGeneralTypeIssues]
-            debug_results[name] = response.model_dump(mode="json")
-
-            # Ignore models that failed to categorize
-            if len(response.touchpoints) > 0:
-                activity = response.touchpoints[0].touchpoint
-                # TODO: podemos usar agentes e definer os touchpoints como
-                # variantes de enum para aumetar a tolerância a falhas, mas com o
-                # sistema de votação a chance de falha cai bastante.
-                if activity in subtipos:
-                    # print(f"DEBUG: {name} -> {activity}")
-                    activities.append(activity)
-                else:
-                    print(f"DEBUG: {name} produced invalid touchpoint: {activity}")
-
-        add_log_entry(
-            actor,
-            msg,
-            debug_results,
-        )
-        # If all models failed to categorize a touchpoint we fail
-        if len(activities) == 0:
+        if not response.touchpoints:
             return "INVALID-TOUCHPOINT-SYSTEM"
-        # Uses the most common category
-        return max(set(activities), key=activities.count)
+
+        subtipos = [item.subtipo for item in categories]
+        activity = response.touchpoints[0].subtipo
+        if activity not in subtipos:
+            return "INVALID-TOUCHPOINT-SYSTEM"
+
+        return activity
+
+
+# class DemocraticClassifierAgent(ClassifierAgent):
+#     """Initialize N models and attempts to classify the data, the most voted touchpoints wins."""
+
+#     def __init__(self, llms: list[str], temperature: float = 0.0):
+#         # NOTE: trocar a url dos modelos ollama
+#         self._models = {}
+#         for llm in llms:
+#             if "ollama" in llm:
+#                 self._models[llm] = init_chat_model(llm, base_url=OLLAMA_BASE_URL)
+#             else:
+#                 self._models[llm] = init_chat_model(llm)
+
+#     def init_agent(self, model: BaseChatModel):
+#         model_wth_struct = model.with_structured_output(TouchpointResponse)
+#         return model_wth_struct
+
+#     async def classify(
+#         self, msg: str, actor: str, categories: list[TouchpointItem]
+#     ) -> str:
+#         """Classifica os touchpoints com base em um sistema de voto, cada modelo faz sua classificação e a classe mais votada ganha"""
+
+#         ## Run asyncronous tasks independently and uses
+#         import asyncio
+
+#         agents = {name: self.init_agent(model) for name, model in self._models.items()}
+
+#         subtipos = {cat.subtipo for cat in categories}
+#         activities: list[str] = []
+
+#         async def _run_one(name: str, model):
+#             prompt = self._build_prompt(msg, actor, categories)
+#             response: TouchpointResponse = await model.ainvoke(  # pyright: ignore[reportAssignmentType]
+#                 prompt
+#             )
+#             return name, response
+
+#         # Executa as chamadas aos modelos em paralelo e as resume no final
+#         tasks = [
+#             asyncio.create_task(_run_one(name, model)) for name, model in agents.items()
+#         ]
+#         results = await asyncio.gather(*tasks, return_exceptions=True)
+
+#         debug_results = {}
+#         for result in results:
+#             # Se algum modelo falhar, apenas ignoramos e seguimos com os demais
+#             if isinstance(result, Exception):
+#                 print(f"DEBUG: model invocation failed: {result}")
+#                 continue
+
+#             name, response = result  # pyright: ignore[reportGeneralTypeIssues]
+#             debug_results[name] = response.model_dump(mode="json")
+
+#             # Ignore models that failed to categorize
+#             if len(response.touchpoints) > 0:
+#                 activity = response.touchpoints[0].touchpoint
+#                 # TODO: podemos usar agentes e definer os touchpoints como
+#                 # variantes de enum para aumetar a tolerância a falhas, mas com o
+#                 # sistema de votação a chance de falha cai bastante.
+#                 if activity in subtipos:
+#                     # print(f"DEBUG: {name} -> {activity}")
+#                     activities.append(activity)
+#                 else:
+#                     print(f"DEBUG: {name} produced invalid touchpoint: {activity}")
+
+#         add_log_entry(
+#             actor,
+#             msg,
+#             debug_results,
+#         )
+#         # If all models failed to categorize a touchpoint we fail
+#         if len(activities) == 0:
+#             return "INVALID-TOUCHPOINT-SYSTEM"
+#         # Uses the most common category
+#         return max(set(activities), key=activities.count)
