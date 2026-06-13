@@ -1,3 +1,5 @@
+import threading
+
 from sqlmodel import Session
 
 from classifier.agent import ClassifierAgent, TouchpointItem
@@ -10,6 +12,7 @@ class ClassifierService:
     def __init__(self, agent: ClassifierAgent, storage: Session):
         self.agent = agent
         self.storage = storage
+        self._storage_lock = threading.Lock()
 
     async def create_touchpoint(
         self, msg: Message, actor: str, tp_list: list[TouchpointItem]
@@ -24,21 +27,24 @@ class ClassifierService:
 
     def save_conversation(self, conversation: Conversation):
         """Saves a conversation on the database"""
-        self.storage.add(conversation)
-        self.storage.commit()
-        self.storage.refresh(conversation)
+        with self._storage_lock:
+            self.storage.add(conversation)
+            self.storage.commit()
+            self.storage.refresh(conversation)
 
     def save_message(self, msg: Message):
         """Saves a message on the database"""
-        self.storage.add(msg)
-        self.storage.commit()
-        self.storage.refresh(msg)
+        with self._storage_lock:
+            self.storage.add(msg)
+            self.storage.commit()
+            self.storage.refresh(msg)
 
     def save_touchpoint(self, touchpoint: Touchpoint):
         """Saves a touchpoint on the database"""
-        self.storage.add(touchpoint)
-        self.storage.commit()
-        self.storage.refresh(touchpoint)
+        with self._storage_lock:
+            self.storage.add(touchpoint)
+            self.storage.commit()
+            self.storage.refresh(touchpoint)
 
     async def create_and_save_touchpoint(
         self, msg: Message, actor: str, tp_list: list[TouchpointItem]

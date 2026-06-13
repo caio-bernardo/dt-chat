@@ -21,8 +21,8 @@ bancobot-test-cov:
 ### Classifier ###
 
 # Run Classifier app
-classifier AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
-    uv run --package classifier classifier --stream {{ AI_TP }} {{ HUMAN_TP }}
+classifier model="vllm:Qwen3/Qwen3-8B" db="db/qwen.db" max-flight="16" AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
+    uv run --package classifier classifier --model "{{ model }}" --max-flight "{{ max-flight }}" --db-path "sqlite:///{{ db }}" --stream {{ AI_TP }} {{ HUMAN_TP }}
 
 # Run Classifier tests
 classifier-test:
@@ -99,8 +99,8 @@ import-dir DIR:
     done
 
 # injects messages on the classifier
-inject-messages QNT='300':
+inject-messages QNT='4000':
     scripts/injector.py sqlite:///db/sim-300/300-messages.db msg_channel --qnt {{ QNT }}
 
-inject-touchpoints QNT='1308':
+inject-touchpoints QNT='30000':
     scripts/injector.py sqlite:///db/real_touchpoints.db tp_channel --type touchpoint --qnt {{ QNT }}

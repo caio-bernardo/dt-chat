@@ -15,8 +15,9 @@ def add_log_entry(
     data: Dict[str, Any],
     file_path: str | Path = LOG_FILE,
 ) -> None:
+    complete_file_path = f"{model_name.replace('/', '-')}-{file_path}"
     """Append a log entry to a CSV file containing a list of entries."""
-    path = Path(file_path)
+    path = Path(complete_file_path)
     is_new_file = not path.exists() or path.stat().st_size == 0
 
     # Escape line breaks so each log entry stays on a single CSV line.

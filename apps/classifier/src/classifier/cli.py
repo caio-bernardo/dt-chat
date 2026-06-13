@@ -26,7 +26,7 @@ TOUCHPOINT_CHANNEL: str = os.environ["TOUCHPOINT_CHANNEL"]
 DB_URL: str = os.environ["TOUCHPOINT_DATABASE_URL"]
 
 
-def get_agent(model: str, temperature=0.0) -> ClassifierAgent:
+def get_agent(model: str, temperature: float = 0.0) -> ClassifierAgent:
     return ClassifierAgent(model, temperature)
 
 
@@ -43,6 +43,7 @@ def load_tp_list(path: str) -> list[TouchpointItem]:
 class ClassifierConfig(BaseModel):
     llm_model: str
     llm_temperature: Optional[float] = None
+    max_in_flight: int = 8
     db_saver: str
     stream: bool
     stream_name: str
@@ -67,48 +68,70 @@ async def arun(config: ClassifierConfig):
         },
     }
 
-    print("INFO: Classifier running. Listening to messages now. Press Ctrl-C to stop.")
+    in_flight_limit = max(1, config.max_in_flight)
+    semaphore = asyncio.Semaphore(in_flight_limit)
+    pending_tasks: set[asyncio.Task[None]] = set()
 
-    while True:
+    async def process_message(data: QueueMessage):
         try:
-            data: QueueMessage = await consumer.subscribe(config.stream_name)
-
-            if data["model_type"] == "conversation":
-                conversation = Conversation.model_validate(data["content"])
-                classifier.save_conversation(conversation)
-                continue
-            elif data["model_type"] != "message":
-                raise ValueError("Wrong data passed on the queue:", data)
-
             message = Message.model_validate(data["content"])
-
             classifier.save_message(message)
             tp = await classifier.create_and_save_touchpoint(
                 message, **cases[message.type]
             )
 
-            # print(f"[{datetime.now()}] INFO: Touchpoint produced. Detail: {tp}")
-
             # INFO: we do not repass messages comming from the fork, or else we
             # may have a recursive explosion of messages made by the forkers
             # causing more forks
-            if config.stream and data["origin"] != "twin_bancobot":
+            if config.stream and data.get("origin") != "twin_bancobot":
                 payload: QueueMessage = {
                     "origin": "classifier",
                     "model_type": "touchpoint",
                     "content": tp.model_dump(mode="json"),
                 }
                 await producer.publish(TOUCHPOINT_CHANNEL, payload)
-
-        except KeyboardInterrupt:
-            print(
-                f"[{datetime.now()}] INFO: User interrupted the process. Finishing now."
-            )
-            break
         except Exception as e:
-            print(f"[{datetime.now()}] ERROR: Failure on {e}")
-            break
-    await consumer.unsubscribe(config.stream_name)
+            print(f"[{datetime.now()}] ERROR: Failure processing message: {e}")
+
+    async def process_message_with_limit(data: QueueMessage):
+        async with semaphore:
+            await process_message(data)
+
+    print("INFO: Classifier running. Listening to messages now. Press Ctrl-C to stop.")
+    print(f"INFO: Parallelism max_in_flight={in_flight_limit}")
+
+    try:
+        while True:
+            data: QueueMessage = await consumer.subscribe(config.stream_name)
+
+            if data["model_type"] == "conversation":
+                conversation = Conversation.model_validate(data["content"])
+                classifier.save_conversation(conversation)
+                continue
+            if data["model_type"] != "message":
+                print(
+                    f"[{datetime.now()}] ERROR: Wrong data passed on the queue: {data}"
+                )
+                continue
+
+            while len(pending_tasks) >= in_flight_limit:
+                done, _ = await asyncio.wait(
+                    pending_tasks, return_when=asyncio.FIRST_COMPLETED
+                )
+                pending_tasks.difference_update(done)
+
+            task = asyncio.create_task(process_message_with_limit(data))
+            pending_tasks.add(task)
+            task.add_done_callback(lambda t: pending_tasks.discard(t))
+
+    except KeyboardInterrupt:
+        print(f"[{datetime.now()}] INFO: User interrupted the process. Finishing now.")
+    except Exception as e:
+        print(f"[{datetime.now()}] ERROR: Failure on {e}")
+    finally:
+        if pending_tasks:
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
+        await consumer.unsubscribe(config.stream_name)
 
 
 @app.command()
@@ -119,6 +142,7 @@ def run(
     stream_name: str = "msg_channel",
     stream: bool = False,
     db_path: str = DB_URL,
+    max_in_flight: int = 8,
 ):
     """Listen for new BancoBot's messages at `stream_name`. Try to classify them
     using a llm `model` and touchpoints files (for AI and human messages).
@@ -131,6 +155,7 @@ def run(
         stream_name=stream_name,
         llm_model=model,
         llm_temperature=0.0,
+        max_in_flight=max_in_flight,
         ai_touchpoint_list=ai_tp_list,
         human_touchpoint_list=human_tp_list,
         stream=stream,
