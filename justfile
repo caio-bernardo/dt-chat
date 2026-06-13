@@ -21,8 +21,8 @@ bancobot-test-cov:
 ### Classifier ###
 
 # Run Classifier app
-classifier model="vllm:Qwen3/Qwen3-8B" db="db/qwen.db" max-flight="16" AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
-    uv run --package classifier classifier --model "{{ model }}" --max-flight "{{ max-flight }}" --db-path "sqlite:///{{ db }}" --stream {{ AI_TP }} {{ HUMAN_TP }}
+classifier model="vllm:Qwen3/Qwen3-8B" db="db/qwen.db" max-in-flight="16" AI_TP="data/touchpoints/Touchpoint_ai.json" HUMAN_TP="data/touchpoints/Touchpoint_human.json": redis-up
+    uv run --package classifier classifier --model "{{ model }}" --max-in-flight "{{ max-in-flight }}" --db-path "sqlite:///{{ db }}" --stream {{ AI_TP }} {{ HUMAN_TP }}
 
 # Run Classifier tests
 classifier-test:
