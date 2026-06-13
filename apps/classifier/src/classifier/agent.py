@@ -9,6 +9,7 @@ from classifier.log import add_log_entry
 # from langchain.agents import create_agent
 
 OLLAMA_BASE_URL = os.environ["OLLAMA_BASE_URL"]
+OLLAMA_API_KEY = os.environ["OLLAMA_API_KEY"]
 
 
 class TouchpointItem(BaseModel):
