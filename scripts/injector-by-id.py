@@ -144,9 +144,10 @@ async def main_async(
     redis_client = Redis(port=redis_port)
     publisher = RedisQueueProducer(redis_client)
     engine = create_engine(db_url)
+    uid = uuid.UUID(id)
 
     with Session(engine) as storage:
-        await injects_message(storage, publisher, stream_name, id)
+        await injects_message(storage, publisher, stream_name, uid)
 
 
 def main(
@@ -161,7 +162,7 @@ def main(
 
 
 async def injects_message(
-    storage: Session, publisher: RedisQueueProducer, channel: str, id: str
+    storage: Session, publisher: RedisQueueProducer, channel: str, id: uuid.UUID
 ):
     try:
         msg = storage.get_one(Message, id)
