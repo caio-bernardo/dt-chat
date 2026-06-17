@@ -52,6 +52,7 @@ class ForkEngine:
         self.queue = queue
         self.queue_prod = queue_prod
         self.conditions: dict[str, list[ConditionCallback]] = {}
+        self._fork_tasks: set[asyncio.Task] = set()
 
     def create_condition(self, activity: str, callback: list[ConditionCallback]):
         """Create a new condition to spawn forks, if activity becomes true the callback is called."""
@@ -67,10 +68,16 @@ class ForkEngine:
         inbound = asyncio.Queue(maxsize=QUEUE_SIZE)
         fork_sem = asyncio.Semaphore(MAX_FORKS)
 
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(self._consume_message(channel, inbound))
-            for _ in range(WORKERS):
-                tg.create_task(self._worker(inbound, fork_sem))
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(self._consume_message(channel, inbound))
+                for _ in range(WORKERS):
+                    tg.create_task(self._worker(inbound, fork_sem))
+        finally:
+            print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
+            await self.queue.unsubscribe(channel)
+            if self._fork_tasks:
+                await asyncio.gather(*self._fork_tasks, return_exceptions=True)
 
     async def _consume_message(
         self, channel: str, inbound: asyncio.Queue[QueueMessage]
@@ -92,16 +99,34 @@ class ForkEngine:
                 inbound.task_done()
 
     async def _handle_message(self, data: QueueMessage, fork_sem: asyncio.Semaphore):
+        configs = await asyncio.to_thread(self._build_configs, data)
+
+        for config in configs:
+            task = asyncio.create_task(self._spawn_fork_threaded(config, fork_sem))
+            self._fork_tasks.add(task)
+            task.add_done_callback(self._fork_tasks.discard)
+
+    def _build_configs(self, data: QueueMessage) -> list[ForkConfig]:
         tp = Touchpoint.model_validate(data["content"])
         with Session(self._engine) as session:
             msg = session.get_one(Message, tp.message_id)
             session.refresh(msg)
             tp.message = msg
 
-            for callback in self.conditions.get(tp.activity, []):
-                config = callback(session, tp)
-                async with fork_sem:
-                    await self.fork(config)
+            callbacks = self.conditions.get(tp.activity) or []
+            return [callback(session, tp) for callback in callbacks]
+
+    async def _spawn_fork_threaded(
+        self, config: ForkConfig, fork_sem: asyncio.Semaphore
+    ):
+        async with fork_sem:
+            try:
+                await asyncio.to_thread(self._run_fork_in_thread, config)
+            except Exception as e:
+                print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+
+    def _run_fork_in_thread(self, config: ForkConfig):
+        asyncio.run(self.fork(config))
 
     async def fork(self, config: ForkConfig):
         print(

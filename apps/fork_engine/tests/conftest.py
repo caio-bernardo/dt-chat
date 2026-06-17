@@ -39,6 +39,7 @@ def mock_queue():
     """Create a mock ISubscriber queue."""
     queue = MagicMock()
     queue.subscribe = AsyncMock()
+    queue.unsubscribe = AsyncMock()
     return queue
 
 

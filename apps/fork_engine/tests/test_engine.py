@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -74,7 +76,6 @@ class TestForkExecution:
     async def test_fork_builds_agents(self, fork_config):
         """Test that fork builds bancobot and userbot."""
         engine = ForkEngine(MagicMock(), MagicMock(), db_url="sqlite:///:memory:")
-        engine._storage = MagicMock()  # avoid relying on a real DB session
 
         mock_userbot = AsyncMock()
         fork_config.userbot_builder.build_with_default.return_value = mock_userbot
@@ -88,7 +89,6 @@ class TestForkExecution:
     async def test_fork_runs_userbot(self, fork_config):
         """Test that fork runs the userbot with correct parameters."""
         engine = ForkEngine(MagicMock(), MagicMock(), db_url="sqlite:///:memory:")
-        engine._storage = MagicMock()  # avoid relying on a real DB session
 
         mock_userbot = AsyncMock()
         fork_config.userbot_builder.build_with_default.return_value = mock_userbot
@@ -156,3 +156,51 @@ class TestWatcherBasics:
         """Test that fork method exists and is callable."""
         assert hasattr(fork_engine, "fork")
         assert callable(fork_engine.fork)
+
+    @pytest.mark.asyncio
+    async def test_awatch_processes_messages_in_parallel_workers(self, fork_engine):
+        """Ensure awatch workers can process multiple messages concurrently."""
+
+        inbound_count = 0
+        block_subscribe = asyncio.Event()
+
+        async def subscribe_side_effect(_channel):
+            nonlocal inbound_count
+            inbound_count += 1
+            if inbound_count <= 2:
+                return {"content": {}}
+            await block_subscribe.wait()
+            return {"content": {}}
+
+        fork_engine.queue.subscribe.side_effect = subscribe_side_effect
+
+        processing_gate = asyncio.Event()
+        observed_parallelism = asyncio.Event()
+        active_workers = 0
+        max_active_workers = 0
+        state_lock = asyncio.Lock()
+
+        async def fake_handle_message(_data, _fork_sem):
+            nonlocal active_workers, max_active_workers
+            async with state_lock:
+                active_workers += 1
+                max_active_workers = max(max_active_workers, active_workers)
+                if max_active_workers >= 2:
+                    observed_parallelism.set()
+            await processing_gate.wait()
+            async with state_lock:
+                active_workers -= 1
+
+        fork_engine._handle_message = AsyncMock(side_effect=fake_handle_message)
+
+        watch_task = asyncio.create_task(fork_engine.awatch(channel="test-channel"))
+
+        await asyncio.wait_for(observed_parallelism.wait(), timeout=1.0)
+
+        processing_gate.set()
+        block_subscribe.set()
+        watch_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await watch_task
+
+        assert max_active_workers >= 2
