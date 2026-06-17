@@ -62,7 +62,7 @@ def local_triple():
     bancobot = BancoAgentBuilder()
 
     deepseek = init_chat_model(
-        "bartowski/Deepseek-R1-Distill-Qwen-14B-GGUF:Q6_K_L",
+        "bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF:Q6_K_L",
         model_provider="openai",
         base_url=BASE_URL,
         api_key=API_KEY,

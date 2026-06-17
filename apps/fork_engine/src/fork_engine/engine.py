@@ -102,7 +102,7 @@ class ForkEngine:
         configs = await asyncio.to_thread(self._build_configs, data)
 
         for config in configs:
-            task = asyncio.create_task(self._spawn_fork_threaded(config, fork_sem))
+            task = asyncio.create_task(self._spawn_fork(config, fork_sem))
             self._fork_tasks.add(task)
             task.add_done_callback(self._fork_tasks.discard)
 
@@ -116,17 +116,12 @@ class ForkEngine:
             callbacks = self.conditions.get(tp.activity) or []
             return [callback(session, tp) for callback in callbacks]
 
-    async def _spawn_fork_threaded(
-        self, config: ForkConfig, fork_sem: asyncio.Semaphore
-    ):
+    async def _spawn_fork(self, config: ForkConfig, fork_sem: asyncio.Semaphore):
         async with fork_sem:
             try:
-                await asyncio.to_thread(self._run_fork_in_thread, config)
+                await self.fork(config)
             except Exception as e:
                 print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
-
-    def _run_fork_in_thread(self, config: ForkConfig):
-        asyncio.run(self.fork(config))
 
     async def fork(self, config: ForkConfig):
         print(
@@ -134,7 +129,7 @@ class ForkEngine:
         )
 
         """Spawn a New Fork of conversation from a configuration set."""
-        bancobot = config.bancobot_builder.build_with_default()
+        bancobot = await asyncio.to_thread(config.bancobot_builder.build_with_default)
         # create a service that can use bancoagent and publish the messages back to the classifier
         # + Generates a new session connection for this fork, so each fork has a
         # database connection that will be closed on exit.
@@ -154,7 +149,7 @@ class ForkEngine:
             )
 
             # execute the userbot
-            userbot = config.userbot_builder.build_with_default()
+            userbot = await asyncio.to_thread(config.userbot_builder.build_with_default)
             await userbot.arun(
                 config.next_msg,
                 config.iterations,
