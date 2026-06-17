@@ -1,3 +1,4 @@
+import datetime as dt
 import uuid
 
 from bancobot.agent import BancoAgentBuilder
@@ -55,6 +56,11 @@ def create_config(
         userbot.initial_messages = previous_messages[:-3]
 
     timesim = retrieve_timesim_from_metadata(meta)
+    # Re-make the temporal offset to start from the forked message
+    timesim.temporal_offset = (
+        dt.datetime.fromtimestamp(data.message.timing_metadata["simulated_timestamp"])
+        - dt.datetime.now()
+    )
     return ForkConfig(
         parent_conversation=data.message.conversation_id,
         bancobot_builder=bot,

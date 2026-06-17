@@ -48,7 +48,7 @@ class ForkEngine:
         # engine should read the stream and have them saved in its storage.
         engine = create_engine(db_url)
         SQLModel.metadata.create_all(engine)
-        self._storage = next(get_session(engine))
+        self._engine = engine
         self.queue = queue
         self.queue_prod = queue_prod
         self.conditions: dict[str, list[ConditionCallback]] = {}
@@ -59,43 +59,49 @@ class ForkEngine:
 
     async def awatch(self, channel: str | None = None):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
-
+        QUEUE_SIZE = 1000
+        WORKERS = 8
+        MAX_FORKS = 20
         channel = channel or DEFAULT_TOUCHPOINT_CHANNEL
 
-        # Uses TaskGroup to create forks and join them at the end
+        inbound = asyncio.Queue(maxsize=QUEUE_SIZE)
+        fork_sem = asyncio.Semaphore(MAX_FORKS)
+
         async with asyncio.TaskGroup() as tg:
-            while True:
-                try:
-                    data: QueueMessage = await self.queue.subscribe(channel)
+            tg.create_task(self._consume_message(channel, inbound))
+            for _ in range(WORKERS):
+                tg.create_task(self._worker(inbound, fork_sem))
 
-                    tp = Touchpoint.model_validate(data["content"])
+    async def _consume_message(
+        self, channel: str, inbound: asyncio.Queue[QueueMessage]
+    ):
+        while True:
+            data: QueueMessage = await self.queue.subscribe(channel)
+            await inbound.put(data)
 
-                    # Saves the touchpoint and refreshs it so it has the message and conversation relationship
-                    msg = self._storage.get_one(Message, tp.message_id)
-                    self._storage.refresh(msg)
-                    tp.message = msg
+    async def _worker(
+        self, inbound: asyncio.Queue[QueueMessage], fork_sem: asyncio.Semaphore
+    ):
+        while True:
+            data = await inbound.get()
+            try:
+                await self._handle_message(data, fork_sem)
+            except Exception as e:
+                print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+            finally:
+                inbound.task_done()
 
-                    # print(f"DEBUG: reads {tp}")
-                    # if there is any registered callback for an activity
-                    # calls the callbacks and gets the config to spawn a new fork in a different process
-                    # inspired by neovim `nvim.create_augroup()`.
-                    callbacks = self.conditions.get(tp.activity) or []
-                    for callback in callbacks:
-                        config = callback(self._storage, tp)
-                        # create new task
-                        tg.create_task(self.fork(config))
-                except asyncio.CancelledError:
-                    print("Fork cancelled")
-                    break
-                except KeyboardInterrupt:
-                    print("Shutdown begin... Press Ctrl-C again to stop execution.")
-                    break
-                except Exception as e:
-                    print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
-                    break
-            # Close queue connection
-            print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
-            await self.queue.unsubscribe(channel)
+    async def _handle_message(self, data: QueueMessage, fork_sem: asyncio.Semaphore):
+        tp = Touchpoint.model_validate(data["content"])
+        with Session(self._engine) as session:
+            msg = session.get_one(Message, tp.message_id)
+            session.refresh(msg)
+            tp.message = msg
+
+            for callback in self.conditions.get(tp.activity, []):
+                config = callback(session, tp)
+                async with fork_sem:
+                    await self.fork(config)
 
     async def fork(self, config: ForkConfig):
         print(
@@ -112,18 +118,20 @@ class ForkEngine:
             "catalyst_message_id": str(config.branched_message_id),
             "bot_label": config.label,
         }
-        config.userbot_builder.asender = BancobotProcedureCallSender(
-            config.parent_conversation,
-            bancobot,
-            self._storage,
-            self.queue_prod,
-            metadata,
-        )
 
-        # execute the userbot
-        userbot = config.userbot_builder.build_with_default()
-        await userbot.arun(
-            config.next_msg,
-            config.iterations,
-            config.timesim,
-        )
+        with Session(self._engine) as fork_session:
+            config.userbot_builder.asender = BancobotProcedureCallSender(
+                config.parent_conversation,
+                bancobot,
+                fork_session,
+                self.queue_prod,
+                metadata,
+            )
+
+            # execute the userbot
+            userbot = config.userbot_builder.build_with_default()
+            await userbot.arun(
+                config.next_msg,
+                config.iterations,
+                config.timesim,
+            )
