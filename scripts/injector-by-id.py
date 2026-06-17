@@ -137,6 +137,7 @@ async def main_async(
     id: str,
     db_url: str,
     stream_name: str,
+    is_point: bool = False,
     redis_port: int = 16739,
 ) -> None:
     """injects database data into a Redis Queue."""
@@ -144,21 +145,26 @@ async def main_async(
     redis_client = Redis(port=redis_port)
     publisher = RedisQueueProducer(redis_client)
     engine = create_engine(db_url)
-    uid = uuid.UUID(id)
 
     with Session(engine) as storage:
-        await injects_message(storage, publisher, stream_name, uid)
+        if is_point:
+            tp_id = int(id)
+            await injects_touchpoint(storage, publisher, stream_name, tp_id)
+        else:
+            uid = uuid.UUID(id)
+            await injects_message(storage, publisher, stream_name, uid)
 
 
 def main(
     id: Annotated[str, typer.Argument()],
     stream_name: Annotated[str, typer.Argument()],
     db_url: Annotated[str, typer.Option()] = "sqlite:///db/messages.db",
+    is_point: Annotated[bool, typer.Option()] = False,
     redis_port: Annotated[int, typer.Option()] = 16739,
 ) -> None:
     """injects database data into a Redis Queue."""
 
-    asyncio.run(main_async(id, db_url, stream_name, redis_port))
+    asyncio.run(main_async(id, db_url, stream_name, is_point, redis_port))
 
 
 async def injects_message(
@@ -169,6 +175,24 @@ async def injects_message(
         payload = QueueMessage(
             origin="injector",
             model_type="message",
+            content=msg.model_dump(mode="json"),
+        )
+        await publisher.publish(channel, payload)
+        print(f"PUBLISH: {payload}")
+    except Exception as e:
+        print(f"FAILURE: {str(e)}")
+
+    print(f"Finished, injected message: {id}")
+
+
+async def injects_touchpoint(
+    storage: Session, publisher: RedisQueueProducer, channel: str, id: int
+):
+    try:
+        msg = storage.get_one(Touchpoint, id)
+        payload = QueueMessage(
+            origin="injector",
+            model_type="touchpoint",
             content=msg.model_dump(mode="json"),
         )
         await publisher.publish(channel, payload)

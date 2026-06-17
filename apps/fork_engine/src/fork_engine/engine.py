@@ -59,7 +59,7 @@ class ForkEngine:
 
     async def awatch(self, channel: str | None = None):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
-        QUEUE_SIZE = 1000
+        QUEUE_SIZE = 12000
         WORKERS = 8
         MAX_FORKS = 20
         channel = channel or DEFAULT_TOUCHPOINT_CHANNEL
