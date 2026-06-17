@@ -13,19 +13,19 @@ from fork_engine.engine import ForkEngine
 load_dotenv()
 
 
-def two_steps(storage: Session, data: Touchpoint) -> ForkConfig:
-    bancobot = twinbots.two_step_rag()
-    return create_config(storage, data, bancobot, "two-step")
+def local_model(storage: Session, data: Touchpoint) -> ForkConfig:
+    bancobot = twinbots.local_model()
+    return create_config(storage, data, bancobot, "local-single-tool")
+
+
+def local_triple(storage: Session, data: Touchpoint) -> ForkConfig:
+    bancobot = twinbots.local_triple()
+    return create_config(storage, data, bancobot, "local-triple")
 
 
 def triple_rag(storage: Session, data: Touchpoint) -> ForkConfig:
     bancobot = twinbots.triple_rag_tool()
     return create_config(storage, data, bancobot, "triple-rag")
-
-
-def no_rag(storage: Session, data: Touchpoint) -> ForkConfig:
-    bancobot = twinbots.no_rag()
-    return create_config(storage, data, bancobot, "no-rag")
 
 
 # EXEMPLO:
@@ -44,7 +44,7 @@ async def amain():
 
     print("[INFO]: Setting up fork conditions...")
     engine.create_condition(
-        "SOLICITAÇÃO DIRETA DE HUMANO", [default, no_rag, two_steps, triple_rag]
+        "SOLICITAÇÃO DIRETA DE HUMANO", [default, local_triple, local_model, triple_rag]
     )
     print("[INFO]: Listening for new messages ...")
     await engine.awatch()

@@ -189,6 +189,7 @@ class ClassifierAgent:
         subtipos = [item.subtipo for item in categories]
         activity = response.touchpoints[0].touchpoint.upper()
         if activity not in subtipos:
+            # TODO: usar o próximo subtipo se houver
             return "INVALID-TOUCHPOINT-SYSTEM"
         return activity
 

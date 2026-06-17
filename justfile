@@ -33,8 +33,8 @@ classifier-test-cov:
     uv run --package classifier pytest apps/classifier/tests --cov=classifier --cov-report=term-missing
 
 # Run Classifier export function
-exporter output-file="output-new.csv":
-    uv run --package exporter exporter --file-output {{ output-file }}
+exporter output-file="output-new.csv" db-path="db/touchpoints.db":
+    uv run --package exporter exporter --file-output "{{ output-file }}" --db-path "{{ db-path }}"
 
 # Run Exportr tests
 exporter-test:
