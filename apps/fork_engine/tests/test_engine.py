@@ -180,7 +180,7 @@ class TestWatcherBasics:
         max_active_workers = 0
         state_lock = asyncio.Lock()
 
-        async def fake_handle_message(_data, _fork_sem):
+        async def fake_handle_message(_data, _fork_sem, _db_sem):
             nonlocal active_workers, max_active_workers
             async with state_lock:
                 active_workers += 1

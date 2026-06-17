@@ -21,6 +21,16 @@ load_dotenv()
 DEFAULT_TOUCHPOINT_CHANNEL: str = os.getenv("TOUCHPOINT_CHANNEL", "tp_channel")
 DEFAULT_TWIN_DATABASE_URL: str | None = os.getenv("TWIN_DATABASE_URL")
 
+DEFAULT_QUEUE_SIZE: int = int(os.getenv("FORK_QUEUE_SIZE", "1000"))
+DEFAULT_WORKERS: int = int(os.getenv("FORK_WORKERS", "8"))
+DEFAULT_MAX_FORKS: int = int(os.getenv("FORK_MAX_FORKS", "6"))
+# Maximum number of concurrent DB sessions used by watcher + forks.
+DEFAULT_MAX_DB_SESSIONS: int = int(os.getenv("FORK_MAX_DB_SESSIONS", "6"))
+
+DEFAULT_DB_POOL_SIZE: int = int(os.getenv("FORK_DB_POOL_SIZE", "10"))
+DEFAULT_DB_MAX_OVERFLOW: int = int(os.getenv("FORK_DB_MAX_OVERFLOW", "10"))
+DEFAULT_DB_POOL_TIMEOUT: int = int(os.getenv("FORK_DB_POOL_TIMEOUT", "30"))
+
 
 ConditionCallback = Callable[[Session, Touchpoint], ForkConfig]
 
@@ -46,7 +56,17 @@ class ForkEngine:
 
         # WARN TODO: for now the database has a copy of the messages, but fork
         # engine should read the stream and have them saved in its storage.
-        engine = create_engine(db_url)
+        engine_kwargs = {}
+        # Avoid passing queue pool args for sqlite, which uses a different pool strategy.
+        if not db_url.startswith("sqlite"):
+            engine_kwargs = {
+                "pool_size": DEFAULT_DB_POOL_SIZE,
+                "max_overflow": DEFAULT_DB_MAX_OVERFLOW,
+                "pool_timeout": DEFAULT_DB_POOL_TIMEOUT,
+                "pool_pre_ping": True,
+            }
+
+        engine = create_engine(db_url, **engine_kwargs)
         SQLModel.metadata.create_all(engine)
         self._engine = engine
         self.queue = queue
@@ -54,25 +74,28 @@ class ForkEngine:
         self.conditions: dict[str, list[ConditionCallback]] = {}
         self._fork_tasks: set[asyncio.Task] = set()
 
+        self._queue_size = DEFAULT_QUEUE_SIZE
+        self._workers = DEFAULT_WORKERS
+        self._max_forks = DEFAULT_MAX_FORKS
+        self._max_db_sessions = DEFAULT_MAX_DB_SESSIONS
+
     def create_condition(self, activity: str, callback: list[ConditionCallback]):
         """Create a new condition to spawn forks, if activity becomes true the callback is called."""
         self.conditions[activity] = callback
 
     async def awatch(self, channel: str | None = None):
         """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
-        QUEUE_SIZE = 12000
-        WORKERS = 8
-        MAX_FORKS = 20
         channel = channel or DEFAULT_TOUCHPOINT_CHANNEL
 
-        inbound = asyncio.Queue(maxsize=QUEUE_SIZE)
-        fork_sem = asyncio.Semaphore(MAX_FORKS)
+        inbound = asyncio.Queue(maxsize=self._queue_size)
+        fork_sem = asyncio.Semaphore(self._max_forks)
+        db_sem = asyncio.Semaphore(self._max_db_sessions)
 
         try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._consume_message(channel, inbound))
-                for _ in range(WORKERS):
-                    tg.create_task(self._worker(inbound, fork_sem))
+                for _ in range(self._workers):
+                    tg.create_task(self._worker(inbound, fork_sem, db_sem))
         finally:
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
             await self.queue.unsubscribe(channel)
@@ -87,22 +110,31 @@ class ForkEngine:
             await inbound.put(data)
 
     async def _worker(
-        self, inbound: asyncio.Queue[QueueMessage], fork_sem: asyncio.Semaphore
+        self,
+        inbound: asyncio.Queue[QueueMessage],
+        fork_sem: asyncio.Semaphore,
+        db_sem: asyncio.Semaphore,
     ):
         while True:
             data = await inbound.get()
             try:
-                await self._handle_message(data, fork_sem)
+                await self._handle_message(data, fork_sem, db_sem)
             except Exception as e:
                 print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
             finally:
                 inbound.task_done()
 
-    async def _handle_message(self, data: QueueMessage, fork_sem: asyncio.Semaphore):
-        configs = await asyncio.to_thread(self._build_configs, data)
+    async def _handle_message(
+        self,
+        data: QueueMessage,
+        fork_sem: asyncio.Semaphore,
+        db_sem: asyncio.Semaphore,
+    ):
+        async with db_sem:
+            configs = await asyncio.to_thread(self._build_configs, data)
 
         for config in configs:
-            task = asyncio.create_task(self._spawn_fork(config, fork_sem))
+            task = asyncio.create_task(self._spawn_fork(config, fork_sem, db_sem))
             self._fork_tasks.add(task)
             task.add_done_callback(self._fork_tasks.discard)
 
@@ -116,14 +148,16 @@ class ForkEngine:
             callbacks = self.conditions.get(tp.activity) or []
             return [callback(session, tp) for callback in callbacks]
 
-    async def _spawn_fork(self, config: ForkConfig, fork_sem: asyncio.Semaphore):
+    async def _spawn_fork(
+        self, config: ForkConfig, fork_sem: asyncio.Semaphore, db_sem: asyncio.Semaphore
+    ):
         async with fork_sem:
             try:
-                await self.fork(config)
+                await self.fork(config, db_sem=db_sem)
             except Exception as e:
                 print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
 
-    async def fork(self, config: ForkConfig):
+    async def fork(self, config: ForkConfig, db_sem: asyncio.Semaphore | None = None):
         print(
             f"[{dt.datetime.now()}] - INFO: Spawning fork for conversation {config.parent_conversation}"
         )
@@ -139,6 +173,16 @@ class ForkEngine:
             "bot_label": config.label,
         }
 
+        if db_sem is None:
+            await self._run_fork_with_session(config, bancobot, metadata)
+            return
+
+        async with db_sem:
+            await self._run_fork_with_session(config, bancobot, metadata)
+
+    async def _run_fork_with_session(
+        self, config: ForkConfig, bancobot, metadata: dict
+    ):
         with Session(self._engine) as fork_session:
             config.userbot_builder.asender = BancobotProcedureCallSender(
                 config.parent_conversation,
