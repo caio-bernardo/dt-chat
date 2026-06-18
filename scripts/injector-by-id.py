@@ -137,7 +137,7 @@ async def main_async(
     id: str,
     db_url: str,
     stream_name: str,
-    is_point: bool = False,
+    type: str = "message",
     redis_port: int = 16739,
 ) -> None:
     """injects database data into a Redis Queue."""
@@ -147,24 +147,30 @@ async def main_async(
     engine = create_engine(db_url)
 
     with Session(engine) as storage:
-        if is_point:
-            tp_id = int(id)
-            await injects_touchpoint(storage, publisher, stream_name, tp_id)
-        else:
-            uid = uuid.UUID(id)
-            await injects_message(storage, publisher, stream_name, uid)
+        match type:
+            case "message":
+                uid = uuid.UUID(id)
+                await injects_message(storage, publisher, stream_name, uid)
+            case "touchpoint":
+                tp_id = int(id)
+                await injects_touchpoint(storage, publisher, stream_name, tp_id)
+            case "conversation":
+                uid = uuid.UUID(id)
+                await injects_converation(storage, publisher, stream_name, uid)
+            case _:
+                raise ValueError(f"Invalid type: {type}")
 
 
 def main(
     id: Annotated[str, typer.Argument()],
     stream_name: Annotated[str, typer.Argument()],
     db_url: Annotated[str, typer.Option()] = "sqlite:///db/messages.db",
-    is_point: Annotated[bool, typer.Option()] = False,
+    type: Annotated[str, typer.Option()] = "message",
     redis_port: Annotated[int, typer.Option()] = 16739,
 ) -> None:
     """injects database data into a Redis Queue."""
 
-    asyncio.run(main_async(id, db_url, stream_name, is_point, redis_port))
+    asyncio.run(main_async(id, db_url, stream_name, type, redis_port))
 
 
 async def injects_message(
@@ -200,7 +206,25 @@ async def injects_touchpoint(
     except Exception as e:
         print(f"FAILURE: {str(e)}")
 
-    print(f"Finished, injected message: {id}")
+    print(f"Finished, injected touchpoint: {id}")
+
+
+async def injects_converation(
+    storage: Session, publisher: RedisQueueProducer, channel: str, id: uuid.UUID
+):
+    try:
+        msg = storage.get_one(Conversation, id)
+        payload = QueueMessage(
+            origin="injector",
+            model_type="conversation",
+            content=msg.model_dump(mode="json"),
+        )
+        await publisher.publish(channel, payload)
+        print(f"PUBLISH: {payload}")
+    except Exception as e:
+        print(f"FAILURE: {str(e)}")
+
+    print(f"Finished, injected conversation: {id}")
 
 
 if __name__ == "__main__":
