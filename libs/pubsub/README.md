@@ -1,61 +1,20 @@
-# PubSub &mdash; A Publisher-Subscriber Interface
+# PubSub Library (pubsub)
 
-Provides a Publisher and Subscriber Interface, allowing communication between process. Currently, provides both an interface and implementation using Redis Queue.
+The `pubsub` library is a core asynchronous communication utility managing the decoupled real-time message exchange between backend services.
 
-## Features
+## What it is
 
-- Redis Queue, working as a publish-subscriber system for realtime events.
+This package declares clean interfaces (`IPublisher` and `ISubscriber`) and provides concrete production-ready implementations using **Redis streams and queues**. It allows real-time, non-blocking message flow from Bancobot to the Classifier, and from the Classifier to the Fork Engine.
 
-## Usage
+## For what it can be used for
 
-### Pre-requisites
+- Streaming raw conversational messages and labeled touchpoints in real-time between decoupled services.
+- Isolating other application packages from the underlying Redis library APIs.
+- Facilitating robust asynchronous I/O architectures within python packages.
 
-- a Redis Server
-- redis-py to create a Redis Client (**use the async client**)
+---
 
-1. Add the library to your project (considering you are in this workspace).
+## Detailed Documentation
 
-```sh
-uv add libs/pubsub
-```
-
-2. Import the components needed, you can either use the interfaces or the concrete types. The next examplo shows using the redis queue.
-
-```py
-## Producer Process
-from pubsub.redis import RedisQueueProducer
-from redis.asyncio import redis # notice the use of the async client
-import json
-
-redis = Redis()
-
-proc = RedisQueueProducer(redis)
-
-msg = {
-    "payload": {
-        "data": 42
-    },
-    "origin": "consumer"
-}
-
-await proc.publish("myqueue", json.dumps(msg))
-
-## Consumer process
-from pubsub.redis import RedisQueueConsumer
-from redis.asyncio import redis # notice the use of the async client
-import json
-
-redis = Redis()
-
-cons = RedisQueueConsumer(redis)
-
-# awaiting for new messages
-while True:
-    msg = await cons.subscribe("myqueue")
-    if msg:
-        print(json.loads(msg))
-```
-
-## License
-
-This project is under the [MIT License](../../LICENSE).
+For architectural diagrams, complete producer/consumer code snippets, and interface designs, see the dedicated documentation page:
+👉 **[docs/pubsub.md](../../docs/pubsub.md)**
