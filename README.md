@@ -94,7 +94,7 @@ To configure the system, start the database, run the simulation, or perform digi
    ```
 5. **Build embeddings**:
    ```sh
-   uv run scripts/embendder.py
+   uv run scripts/embendder.py --target-dir <path_to_your_rag_documents>
    ```
 6. **Run the services**: Consult the complete end-to-end orchestration in **[USAGE.md](docs/USAGE.md#3-end-to-end-orchestrated-walkthrough)**.
 

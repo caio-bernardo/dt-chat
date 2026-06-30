@@ -90,7 +90,7 @@ Before launching the conversational agent, parse the credit card files and index
 uv run scripts/embendder.py
 ```
 
-_This command reads documentation from `data/RAG-Cartoes/` and saves vectors locally using OpenAI's `text-embedding-3-large` model._
+_This command reads documentation from `RAG-Cartoes/` and saves vectors locally using OpenAI's `text-embedding-3-large` model._
 
 ### Step 2.3: Run the Bancobot Chatbot API
 
