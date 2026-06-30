@@ -86,15 +86,21 @@ To configure the system, start the database, run the simulation, or perform digi
    ```sh
    cp .env.example .env  # Update with your API Keys
    ```
-3. **Boot the broker**:
+3. **Include RAG documents**:
+   Add to `data/RAG-Cartoes` all the necessary files (Contact the author to acquire them).
+4. **Boot the broker**:
    ```sh
    just redis-up
    ```
-4. **Build embeddings**:
+5. **Build embeddings**:
    ```sh
-   uv run scripts/embendder.py
+   uv run scripts/embendder.py --target-dir <path_to_your_rag_documents>
    ```
-5. **Run the services**: Consult the complete end-to-end orchestration in **[USAGE.md](docs/USAGE.md#3-end-to-end-orchestrated-walkthrough)**.
+6. **Run the services**: Consult the complete end-to-end orchestration in **[USAGE.md](docs/USAGE.md#3-end-to-end-orchestrated-walkthrough)**.
+
+## Contributions
+
+See Issues for a list of know issues, if you find any problem or want to discuss about the project, open an issue and we can discuss solutions and any form of contribution.
 
 ## License
 
