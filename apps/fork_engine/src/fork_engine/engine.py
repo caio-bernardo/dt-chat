@@ -192,6 +192,11 @@ class ForkEngine:
                 metadata,
             )
 
+            # Re-make the temporal offset to start from the forked message
+            # Because the old offset considers the distance between the target date and the time the conversation was made.
+            # This code recalculates the offset by using the target date and the current time to give a new distance.
+            config.timesim.temporal_offset = config.target_date - dt.datetime.now()
+
             # execute the userbot
             userbot = await asyncio.to_thread(config.userbot_builder.build_with_default)
             await userbot.arun(
