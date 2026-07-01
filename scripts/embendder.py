@@ -6,6 +6,7 @@
 #     "langchain-chroma",
 #     "langchain-docling",
 #     "langchain-openai",
+#     "langchain-community",
 #     "langchain-text-splitters",
 #     "python-dotenv",
 #     "typer>=0.19.2",
@@ -72,7 +73,7 @@ def lazy_load_documents(files: Iterable[Path]) -> Iterator[Document]:
 
 
 def split_documents(
-    docs: Iterable[Document], size: int = 512, overlap: int = 64
+    docs: Iterable[Document], size: int = 256, overlap: int = 64
 ) -> Sequence[Document]:
     """Split documents into chunks to improve loading speeds, accepts an overlap
     that controls how the splitings is made."""
@@ -99,7 +100,15 @@ def main(
     docs = split_documents(lazy_load_documents(files))
     clean_docs = [clean_document(d) for d in docs]
 
-    embeddings = OpenAIEmbeddings(model=embedding_model)
+    if embedding_model.startswith("huggingface:"):
+        from langchain_community.embeddings import (
+            HuggingFaceEmbeddings,
+        )
+
+        embedding_model = embedding_model.replace("huggingface:", "")
+        embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
+    else:
+        embeddings = OpenAIEmbeddings(model=embedding_model)
 
     vector_store = Chroma(
         collection_name=collection_name,
