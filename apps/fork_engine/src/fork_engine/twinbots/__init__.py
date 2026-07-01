@@ -1,3 +1,4 @@
+from .adaptive_rag import adaptive_rag
 from .local_model import local_model
 from .local_triple import local_triple
 from .no_rag import no_rag
@@ -6,6 +7,7 @@ from .triple_tool import triple_rag_tool
 from .two_step import two_step_rag
 
 __all__ = [
+    "adaptive_rag",
     "local_model",
     "local_triple",
     "single_rag_tool",

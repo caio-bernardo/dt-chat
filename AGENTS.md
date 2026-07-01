@@ -58,6 +58,8 @@ The project is structure as a uv workspace, where packages can have shared or pr
   - `injector.py`: injects all rows of a table into a redis queue.
   - `swarm.py`: simulate a swarm of users interacting with the assistant chatbot.
 
+`config.yaml` is a config file for the `adaptative_rag` in `fork_engine/twinbots` package.
+
 `justfile` has a collection of rules and commands to execute in this project, use `just <command> <args>` to execute a command, to see all available commands, use `just --list`.
 
 The `docker-compose.yml` contains docker services like the Redis instace.
