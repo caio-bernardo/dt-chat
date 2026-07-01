@@ -37,6 +37,9 @@ sequenceDiagram
 4. **Digital Twin Spawning**: It forks the conversation into several simulation paths (cases) and initializes distinct conversational agents (e.g., local single-tool, local-triple, triple-rag, default single-rag) to take over the dialogue.
 5. **Autonomic Simulation**: Parallel threads run UserBots (using the `userbot` library) loaded with the original user's persona configuration to interact with the forked chatbot setups, capturing exactly how each agent variant handles the situation from the exact same point in time.
 
+> [!warning]
+> Right now (prev 1.0.0) the only way of the forker working is by having a copy or using the same database as the produced messages and conversations. Remeber to provide access to them. (issue #26).
+
 ## Package Structure
 
 ```
@@ -58,10 +61,13 @@ apps/fork_engine/
 ## Running the Engine
 
 Start the Fork Engine with `just`:
+
 ```sh
 just forker
 ```
+
 Under the hood, this runs:
+
 ```sh
 uv run --package fork-engine fork-engine
 ```

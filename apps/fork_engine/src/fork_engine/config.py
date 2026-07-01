@@ -26,6 +26,7 @@ class ForkConfig(BaseModel):
     userbot_builder: UserBotBuilder
     next_msg: str
     timesim: TimeSimulationConfig = TimeSimulationConfig()
+    target_date: dt.datetime
     label: str = ""
     iterations: int = 15
 
@@ -56,10 +57,9 @@ def create_config(
         userbot.initial_messages = previous_messages[:-3]
 
     timesim = retrieve_timesim_from_metadata(meta)
-    # Re-make the temporal offset to start from the forked message
-    timesim.temporal_offset = (
-        dt.datetime.fromtimestamp(data.message.timing_metadata["simulated_timestamp"])
-        - dt.datetime.now()
+    # NOTE: will be used to remake the simulated offset
+    target_date = dt.datetime.fromtimestamp(
+        data.message.timing_metadata["simulated_timestamp"]
     )
     return ForkConfig(
         parent_conversation=data.message.conversation_id,
@@ -68,6 +68,7 @@ def create_config(
         branched_message_id=data.message.id,
         next_msg=str(next_msg),  # re-ask the message before the touchpoint
         timesim=timesim,
+        target_date=target_date,
         label=label,
         iterations=20 - len(previous_messages),
     )

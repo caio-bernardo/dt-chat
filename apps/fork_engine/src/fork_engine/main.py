@@ -28,10 +28,15 @@ def triple_rag(storage: Session, data: Touchpoint) -> ForkConfig:
     return create_config(storage, data, bancobot, "triple-rag")
 
 
+def adaptive_rag(storage: Session, data: Touchpoint) -> ForkConfig:
+    bancobot = twinbots.adaptive_rag()
+    return create_config(storage, data, bancobot, "adaptive-rag")
+
+
 # EXEMPLO:
-def default(storage: Session, data: Touchpoint) -> ForkConfig:
+def single_tool(storage: Session, data: Touchpoint) -> ForkConfig:
     bancobot = twinbots.single_rag_tool()
-    return create_config(storage, data, bancobot, "default")
+    return create_config(storage, data, bancobot, "single-rag")
 
 
 async def amain():
@@ -44,7 +49,8 @@ async def amain():
 
     print("[INFO]: Setting up fork conditions...")
     engine.create_condition(
-        "SOLICITAÇÃO DIRETA DE HUMANO", [default, local_triple, local_model, triple_rag]
+        "SOLICITAÇÃO DIRETA DE HUMANO",
+        [adaptive_rag],
     )
     print("[INFO]: Listening for new messages ...")
     await engine.awatch()

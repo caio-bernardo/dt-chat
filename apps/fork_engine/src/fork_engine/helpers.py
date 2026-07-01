@@ -2,12 +2,9 @@ from typing import Sequence
 
 from bancobot.database import MessageType
 from bancobot.models import Message
-from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
 from sqlmodel import Session, col, select
 from userbot import TimeSimulationConfig
-
-load_dotenv()
 
 
 def load_history(session_id: int, limit: int) -> Sequence[Message]:
