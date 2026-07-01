@@ -30,7 +30,7 @@ def triple_rag(storage: Session, data: Touchpoint) -> ForkConfig:
 
 def adaptive_rag(storage: Session, data: Touchpoint) -> ForkConfig:
     bancobot = twinbots.adaptive_rag()
-    return create_config(storage, data, bancobot, "default")
+    return create_config(storage, data, bancobot, "adaptive-rag")
 
 
 # EXEMPLO:
