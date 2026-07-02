@@ -76,7 +76,7 @@ class _RAGBancoAgentBuilder(BancoAgentBuilder):
 
 def _make_embeddings(config: RAGConfig):
     if config.embedding_config.provider.lower() == "huggingface":
-        from langchain_community.embeddings import (
+        from langchain_huggingface import (
             HuggingFaceEmbeddings,  # type: ignore[import]
         )
 

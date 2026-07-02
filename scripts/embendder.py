@@ -3,6 +3,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
+#     "langchain-huggingface>=1.2.2",
+#     "sentence-transformers>=5.6.0",
 #     "langchain-chroma",
 #     "langchain-docling",
 #     "langchain-openai",
@@ -101,12 +103,14 @@ def main(
     clean_docs = [clean_document(d) for d in docs]
 
     if embedding_model.startswith("huggingface:"):
-        from langchain_community.embeddings import (
+        from langchain_huggingface import (
             HuggingFaceEmbeddings,
         )
 
         embedding_model = embedding_model.replace("huggingface:", "")
-        embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
+        embeddings = HuggingFaceEmbeddings(
+            model_name=embedding_model, model_kwargs={"device": "cpu"}
+        )
     else:
         embeddings = OpenAIEmbeddings(model=embedding_model)
 
