@@ -41,9 +41,9 @@ def create_config(
     userbot = UserBotBuilder()
     userbot.prompt = retrieve_userbot_persona_from_metadata(meta)
 
-    previous_messages = convert_conversation_to_langchain_types(
-        retrieve_messages_until(storage, data.message)
-    )
+    # NOTE: offset will be replaced in runtime
+    timesim = retrieve_timesim_from_metadata(meta)
+    previous_messages = retrieve_messages_until(storage, data.message)
 
     # This touchpoint is only produced by humans, so If the message is at the
     # begining (max position 2) then we begin the conversation from the
@@ -51,16 +51,20 @@ def create_config(
     if len(previous_messages) < 4:
         next_msg = "Olá"
         userbot.initial_messages = []
+        # NOTE: conversation is restarted so use the same target timestamp.
+        target_date = dt.datetime.fromtimestamp(
+            previous_messages[0].timing_metadata["simulated_timestamp"]
+        )
     else:
         # Else reask the previous question
         next_msg = previous_messages[-3].content
-        userbot.initial_messages = previous_messages[:-3]
-
-    timesim = retrieve_timesim_from_metadata(meta)
-    # NOTE: will be used to remake the simulated offset
-    target_date = dt.datetime.fromtimestamp(
-        data.message.timing_metadata["simulated_timestamp"]
-    )
+        userbot.initial_messages = convert_conversation_to_langchain_types(
+            previous_messages[:-3]
+        )
+        # NOTE: conversation shall continue from the timestamp of the last message
+        target_date = dt.datetime.fromtimestamp(
+            previous_messages[-3].timing_metadata["simulated_timestamp"]
+        )
     return ForkConfig(
         parent_conversation=data.message.conversation_id,
         bancobot_builder=bot,
