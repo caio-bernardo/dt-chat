@@ -83,6 +83,7 @@ def _make_embeddings(config: RAGConfig):
         return HuggingFaceEmbeddings(
             model_name=config.embedding_config.model,
             model_kwargs=config.embedding_config.model_kwargs,
+            encode_kwargs={"normalize_embeddings": True},
         )
     if config.embedding_config.provider.lower() == "openai":
         return OpenAIEmbeddings(model=config.embedding_config.model)

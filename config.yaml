@@ -198,6 +198,10 @@ embedding_config:
   model: "PORTULAN/serafim-900m-portuguese-pt-sentence-encoder-ir"
   model_kwargs:
     device: "cpu"
+    # Sim, precisamos de um duplo model_kwargs (esse vai direto para o
+    # sentences-transformers) enquanto o primeiro é parseado pelo langchain...*suspiro*
+    model_kwargs:
+      low_cpu_mem_usage: false
 
 vectorstore_config:
   provider: "chroma"

@@ -121,6 +121,9 @@ class ForkEngine:
                 await self._handle_message(data, fork_sem, db_sem)
             except Exception as e:
                 print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
+                import traceback
+
+                traceback.print_exc()
             finally:
                 inbound.task_done()
 
