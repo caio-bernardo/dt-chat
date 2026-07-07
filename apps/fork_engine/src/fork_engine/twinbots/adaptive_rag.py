@@ -132,6 +132,11 @@ def adaptive_rag(
     llm_kwargs: Dict[str, Any] = {"model": config.llm_config.model}
     if config.llm_config.temperature is not None:
         llm_kwargs["temperature"] = config.llm_config.temperature
+    if config.llm_config.frequency_penalty is not None:
+        llm_kwargs["frequency_penalty"] = config.llm_config.frequency_penalty
+    if config.llm_config.presence_penalty is not None:
+        llm_kwargs["presence_penalty"] = config.llm_config.presence_penalty
+
     model = ChatOpenAI(**llm_kwargs)
 
     workflow = build_rag_workflow(config, vectorstores, model)

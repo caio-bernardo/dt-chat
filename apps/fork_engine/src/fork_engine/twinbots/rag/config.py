@@ -46,7 +46,8 @@ class VectorstoreConfig(BaseModel):
 class LLMConfig(BaseModel):
     model: str
     temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
+    frequency_penalty: Optional[int] = None
+    presence_penalty: Optional[int] = None
 
 
 class TextSplitterConfig(BaseModel):
