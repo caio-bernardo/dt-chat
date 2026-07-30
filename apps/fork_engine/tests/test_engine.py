@@ -1,10 +1,13 @@
 import asyncio
 import contextlib
 import uuid
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from bancobot.models import Conversation, Message, MessageType
 from fork_engine.engine import ForkEngine
+from sqlmodel import Session, select
 
 
 class TestForkEngineInit:
@@ -16,6 +19,48 @@ class TestForkEngineInit:
         assert engine.queue == mock_queue
         assert engine.queue_prod == mock_queue_prod
         assert engine.conditions == {}
+
+
+class TestSourcePersistence:
+    def test_saves_conversation_and_message(self, fork_engine):
+        conversation_id = uuid.uuid4()
+        message_id = uuid.uuid4()
+        conversation = {
+            "id": str(conversation_id),
+            "created_at": datetime.now().isoformat(),
+            "meta": {"source": "test"},
+        }
+        message = {
+            "id": str(message_id),
+            "conversation_id": str(conversation_id),
+            "created_at": datetime.now().isoformat(),
+            "content": "hello",
+            "type": MessageType.Human.value,
+            "timing_metadata": {
+                "simulated_timestamp": datetime.now().timestamp(),
+                "pause_time": 0,
+                "typing_time": 0,
+                "thinking_time": 0,
+            },
+            "meta": {},
+            "parent_message_id": None,
+        }
+
+        fork_engine._save_source_model(
+            {"origin": "test", "model_type": "conversation", "content": conversation}
+        )
+        fork_engine._save_source_model(
+            {"origin": "test", "model_type": "message", "content": message}
+        )
+        fork_engine._save_source_model(
+            {"origin": "test", "model_type": "message", "content": message}
+        )
+
+        with Session(fork_engine._engine) as session:
+            assert session.get(Conversation, conversation_id) is not None
+            saved = session.exec(select(Message).where(Message.id == message_id)).all()
+            assert len(saved) == 1
+            assert saved[0].content == "hello"
 
 
 class TestConditionManagement:
@@ -192,6 +237,7 @@ class TestWatcherBasics:
                 active_workers -= 1
 
         fork_engine._handle_message = AsyncMock(side_effect=fake_handle_message)
+        fork_engine._consume_source_messages = AsyncMock()
 
         watch_task = asyncio.create_task(fork_engine.awatch(channel="test-channel"))
 

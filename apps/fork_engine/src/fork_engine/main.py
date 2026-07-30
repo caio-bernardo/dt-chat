@@ -43,7 +43,7 @@ async def amain():
     print("[INFO]: Initializing Fork Engine...")
 
     redis = Redis(port=int(os.environ["REDIS_PORT"]))
-    consumer = RedisQueueConsumer(redis)
+    consumer = RedisQueueConsumer(redis, group="fork_engine")
     producer = RedisQueueProducer(redis)
     engine = ForkEngine(consumer, producer)
 

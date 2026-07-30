@@ -31,14 +31,13 @@ sequenceDiagram
     AI3->>C: Emit Twin Messages
 ```
 
-1. **Event Listening**: The engine subscribes to the touchpoint event stream (`tp_channel`) on Redis.
+1. **Event Listening**: The engine subscribes to the message stream (`msg_channel`) and persists source conversations/messages in `TWIN_DATABASE_URL`; it also subscribes to the touchpoint stream (`tp_channel`) for fork triggers.
 2. **Condition Matching**: It monitors for defined trigger classes. By default, it looks for human messages classified as `"SOLICITAÇÃO DIRETA DE HUMANO"` (escalations, direct or complex requests).
 3. **Context Harvesting**: On trigger detection, it retrieves the entire history of the active conversation from the database (the exact sequence of messages leading up to the catalyst).
 4. **Digital Twin Spawning**: It forks the conversation into several simulation paths (cases) and initializes distinct conversational agents (e.g., local single-tool, local-triple, triple-rag, default single-rag) to take over the dialogue.
 5. **Autonomic Simulation**: Parallel threads run UserBots (using the `userbot` library) loaded with the original user's persona configuration to interact with the forked chatbot setups, capturing exactly how each agent variant handles the situation from the exact same point in time.
 
-> [!warning]
-> Right now (prev 1.0.0) the only way of the forker working is by having a copy or using the same database as the produced messages and conversations. Remeber to provide access to them. (issue #26).
+> The engine builds its own conversation/message read model from `MSG_CHANNEL`. Configure `TWIN_DATABASE_URL` as its writable database.
 
 ## Package Structure
 

@@ -19,6 +19,7 @@ load_dotenv()
 
 # Read env vars lazily / safely so importing this module doesn't crash in unit tests.
 DEFAULT_TOUCHPOINT_CHANNEL: str = os.getenv("TOUCHPOINT_CHANNEL", "tp_channel")
+DEFAULT_MSG_CHANNEL: str = os.getenv("MSG_CHANNEL", "msg_channel")
 DEFAULT_TWIN_DATABASE_URL: str | None = os.getenv("TWIN_DATABASE_URL")
 
 DEFAULT_QUEUE_SIZE: int = int(os.getenv("FORK_QUEUE_SIZE", "1000"))
@@ -54,8 +55,6 @@ class ForkEngine:
                 "Missing database url: pass `db_url` or set TWIN_DATABASE_URL env var"
             )
 
-        # WARN TODO: for now the database has a copy of the messages, but fork
-        # engine should read the stream and have them saved in its storage.
         engine_kwargs = {}
         # Avoid passing queue pool args for sqlite, which uses a different pool strategy.
         if not db_url.startswith("sqlite"):
@@ -83,9 +82,10 @@ class ForkEngine:
         """Create a new condition to spawn forks, if activity becomes true the callback is called."""
         self.conditions[activity] = callback
 
-    async def awatch(self, channel: str | None = None):
-        """Async Watch over a queue of touchpoints, matching againts conditions and spawn new forks if the condition matches."""
+    async def awatch(self, channel: str | None = None, msg_channel: str | None = None):
+        """Watch touchpoints and persist source conversations/messages."""
         channel = channel or DEFAULT_TOUCHPOINT_CHANNEL
+        msg_channel = msg_channel or DEFAULT_MSG_CHANNEL
 
         inbound = asyncio.Queue(maxsize=self._queue_size)
         fork_sem = asyncio.Semaphore(self._max_forks)
@@ -94,11 +94,14 @@ class ForkEngine:
         try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._consume_message(channel, inbound))
+                tg.create_task(self._consume_source_messages(msg_channel))
                 for _ in range(self._workers):
                     tg.create_task(self._worker(inbound, fork_sem, db_sem))
         finally:
             print(f"[{dt.datetime.now()}] - INFO: Finishing all forks...")
             await self.queue.unsubscribe(channel)
+            if msg_channel != channel:
+                await self.queue.unsubscribe(msg_channel)
             if self._fork_tasks:
                 await asyncio.gather(*self._fork_tasks, return_exceptions=True)
 
@@ -108,6 +111,31 @@ class ForkEngine:
         while True:
             data: QueueMessage = await self.queue.subscribe(channel)
             await inbound.put(data)
+
+    async def _consume_source_messages(self, channel: str):
+        while True:
+            data: QueueMessage = await self.queue.subscribe(channel)
+            try:
+                model_type = data.get("model_type")
+                if model_type not in {"conversation", "message"}:
+                    await self.queue.ack(data)
+                    continue
+                await asyncio.to_thread(self._save_source_model, data)
+                await self.queue.ack(data)
+            except Exception as e:
+                print(f"[{dt.datetime.now()}] - ERROR: Failed saving source data: {e}")
+
+    def _save_source_model(self, data: QueueMessage):
+        with Session(self._engine) as session:
+            if data["model_type"] == "conversation":
+                conversation = Conversation.model_validate(data["content"])
+                if session.get(Conversation, conversation.id) is None:
+                    session.add(conversation)
+            else:
+                message = Message.model_validate(data["content"])
+                if session.get(Message, message.id) is None:
+                    session.add(message)
+            session.commit()
 
     async def _worker(
         self,
@@ -119,6 +147,7 @@ class ForkEngine:
             data = await inbound.get()
             try:
                 await self._handle_message(data, fork_sem, db_sem)
+                await self.queue.ack(data)
             except Exception as e:
                 print(f"[{dt.datetime.now()}] - ERROR: {str(e)}")
                 import traceback
