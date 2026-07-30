@@ -57,7 +57,7 @@ async def arun(config: ClassifierConfig):
     storage = next(get_session(engine))
     redis = get_redis()
     classifier = ClassifierService(agent, storage)
-    consumer = RedisQueueConsumer(redis)
+    consumer = RedisQueueConsumer(redis, group="classifier")
     producer = RedisQueueProducer(redis)
 
     cases = {
@@ -72,7 +72,7 @@ async def arun(config: ClassifierConfig):
     semaphore = asyncio.Semaphore(in_flight_limit)
     pending_tasks: set[asyncio.Task[None]] = set()
 
-    async def process_message(data: QueueMessage):
+    async def process_message(data: QueueMessage) -> bool:
         try:
             message = Message.model_validate(data["content"])
             classifier.save_message(message)
@@ -90,12 +90,15 @@ async def arun(config: ClassifierConfig):
                     "content": tp.model_dump(mode="json"),
                 }
                 await producer.publish(TOUCHPOINT_CHANNEL, payload)
+            return True
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Failure processing message: {e}")
+            return False
 
     async def process_message_with_limit(data: QueueMessage):
         async with semaphore:
-            await process_message(data)
+            if await process_message(data):
+                await consumer.ack(data)
 
     print("INFO: Classifier running. Listening to messages now. Press Ctrl-C to stop.")
     print(f"INFO: Parallelism max_in_flight={in_flight_limit}")
@@ -107,11 +110,13 @@ async def arun(config: ClassifierConfig):
             if data["model_type"] == "conversation":
                 conversation = Conversation.model_validate(data["content"])
                 classifier.save_conversation(conversation)
+                await consumer.ack(data)
                 continue
             if data["model_type"] != "message":
                 print(
                     f"[{datetime.now()}] ERROR: Wrong data passed on the queue: {data}"
                 )
+                await consumer.ack(data)
                 continue
 
             while len(pending_tasks) >= in_flight_limit:

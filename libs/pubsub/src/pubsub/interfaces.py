@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Dict, TypedDict
+from typing import TypedDict
 
 
 class QueueMessage(TypedDict):
     origin: str
     model_type: str
-    content: Dict
+    content: dict
 
 
 class IPublisher(ABC):
@@ -20,6 +20,9 @@ class ISubscriber(ABC):
 
     @abstractmethod
     async def subscribe(self, channel: str) -> QueueMessage: ...
+
+    @abstractmethod
+    async def ack(self, message: QueueMessage): ...
 
     @abstractmethod
     async def unsubscribe(self, channel: str): ...

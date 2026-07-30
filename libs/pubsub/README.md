@@ -1,10 +1,10 @@
 # PubSub Library (pubsub)
 
-The `pubsub` library is a core asynchronous communication utility managing the decoupled real-time message exchange between backend services.
+The `pubsub` library is a core asynchronous communication utility managing decoupled message exchange between backend services.
 
 ## What it is
 
-This package declares clean interfaces (`IPublisher` and `ISubscriber`) and provides concrete production-ready implementations using **Redis streams and queues**. It allows real-time, non-blocking message flow from Bancobot to the Classifier, and from the Classifier to the Fork Engine.
+This package declares clean interfaces (`IPublisher` and `ISubscriber`) and provides Redis Streams implementations. Consumers use one Redis consumer group per service and ACK messages after successful processing.
 
 ## For what it can be used for
 

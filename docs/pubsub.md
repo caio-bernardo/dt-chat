@@ -4,13 +4,13 @@ The `pubsub` library is a core asynchronous communication package within the `li
 
 ## Purpose
 
-The dt-chat architecture runs as a set of separate processes (such as `bancobot` generating messages, `classifier` mapping those messages to touchpoints, and `fork_engine` reacting to touchpoint events). The `pubsub` library abstracts away the transport layer, providing high-level interfaces for producing and consuming stream messages, implemented on top of a Redis database.
+The dt-chat architecture runs as separate processes: Bancobot generates messages, Classifier maps messages to touchpoints, and Fork Engine reacts to touchpoints. The `pubsub` library abstracts Redis Streams behind high-level interfaces.
 
 ## Architecture
 
 ```
 ┌─────────────────┐       pubsub.RedisQueueProducer       ┌───────────────┐
-│    Bancobot     │ ────────────────────────────────────> │  Redis Queue  │
+│    Bancobot     │ ────────────────────────────────────> │  Redis Stream │
 └─────────────────┘                                       │ (msg_channel) │
                                                           └───────────────┘
                                                                   │
@@ -32,7 +32,8 @@ The dt-chat architecture runs as a set of separate processes (such as `bancobot`
 
 1. **Decoupled Messaging**: Components communicate entirely via message topics/streams, meaning they can be started, stopped, or scaled independently.
 2. **High-Performance Async Transport**: Utilizes `redis.asyncio` for non-blocking I/O operations.
-3. **Flexible Interface**: Declares clean, mockable abstract base classes (`IPublisher` and `ISubscriber`), making local unit-testing straightforward without running Redis.
+3. **Consumer Groups**: Each downstream service uses its own group and ACKs only after successful processing, providing at-least-once delivery.
+4. **Flexible Interface**: Declares clean, mockable abstract base classes (`IPublisher` and `ISubscriber`), making local unit-testing straightforward without running Redis.
 
 ## Library Structure
 
@@ -49,12 +50,15 @@ libs/pubsub/
 ## Developer Usage
 
 ### 1. Adding to a Package
+
 To declare `pubsub` as a dependency in a workspace package, run:
+
 ```sh
 uv add libs/pubsub
 ```
 
 ### 2. Publishing Messages (Producer)
+
 ```python
 import json
 from pubsub.redis import RedisQueueProducer
@@ -63,24 +67,27 @@ from redis.asyncio import Redis
 async def produce():
     redis_client = Redis(port=16739)
     producer = RedisQueueProducer(redis_client)
-    
-    payload = {"message_id": "...", "content": "Hello World"}
-    await producer.publish("msg_channel", json.dumps(payload))
+
+    payload = {"origin": "example", "model_type": "message", "content": {}}
+    await producer.publish("msg_channel", payload)
 ```
 
 ### 3. Consuming Messages (Consumer)
+
 ```python
 from pubsub.redis import RedisQueueConsumer
 from redis.asyncio import Redis
 
 async def consume():
     redis_client = Redis(port=16739)
-    consumer = RedisQueueConsumer(redis_client)
-    
+    consumer = RedisQueueConsumer(redis, group="classifier")
+
     while True:
         event = await consumer.subscribe("msg_channel")
+        # ACK only after successful processing.
         if event:
             print("Received:", event)
+            await consumer.ack(event)
 ```
 
 For configuring ports and running redis, please consult the [USAGE Guide](USAGE.md).
